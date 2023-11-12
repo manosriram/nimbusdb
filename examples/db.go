@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	d, _ := db.Open("/Users/manosriram/go/src/treedb/data/")
+	d, _ := db.Open("/Users/manosriram/go/src/nimbusdb/data/")
 	fmt.Println(d)
 }

@@ -3,55 +3,69 @@ package db
 import (
 	"fmt"
 	"os"
-	"strings"
+	"path"
 )
 
 const (
-	ACTIVE_SEGMENT_DATAFILE_SUFFIX = "dfile"
+	ACTIVE_SEGMENT_DATAFILE_SUFFIX   = ".dfile"
+	SEGMENT_HINTFILE_SUFFIX          = ".hfile"
+	INACTIVE_SEGMENT_DATAFILE_SUFFIX = ".idfile"
+)
+
+const (
+	TEMPFILE_DATAFILE_PATTERN = "*.dfile"
 )
 
 type Segment struct {
-	tstamp string
-	ksize  uint32
-	vsize  uint32
-	k      []byte
-	v      []byte
+	fileId        string
+	segmentOffset uint64
+	tstamp        string
+	ksz           uint32
+	vsz           uint32
+	k             []byte
+	v             interface{}
 }
 
 type Db struct {
-	dirPath               string
-	activeDataFileSegment map[string]*Segment
+	dirPath string
+	keyDir  map[string]*Segment
 }
 
-func Open(path string) (*Db, error) {
-	db := &Db{}
+func (db *Db) parseActiveSegmentFile(data []byte) {}
 
-	d, err := os.ReadDir(path)
+func Open(dirPath string) (*Db, error) {
+	db := &Db{
+		dirPath: dirPath,
+	}
+
+	dir, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
 	}
-	if len(d) == 0 {
+
+	// Empty path, starting new
+	if len(dir) == 0 {
 		// no files in path
 		// create an active segment file
+		file, err := os.CreateTemp(dirPath, TEMPFILE_DATAFILE_PATTERN)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println(file)
 	}
 
-	for _, y := range d {
-		if y.IsDir() {
+	// Found files in dir
+	for _, file := range dir {
+		if file.IsDir() {
 			continue
 		}
 
-		z, zz := y.Info()
-		if strings.Split(z.Name(), ".")[1] == ACTIVE_SEGMENT_DATAFILE_SUFFIX {
-			fmt.Println("got active segment file")
-			// db.activeDataFileSegment[z.Name()] = &Segment{
-
-			// }
+		fileInfo, _ := file.Info()
+		if path.Ext(fileInfo.Name()) == ACTIVE_SEGMENT_DATAFILE_SUFFIX {
+			fileData, _ := os.ReadFile(dirPath + file.Name())
+			db.parseActiveSegmentFile(fileData)
 		}
-		fmt.Println("in = ", z, zz)
 	}
-
-	db.dirPath = path
-	db.activeDataFileSegment = make(map[string]Segment, 0)
 
 	return db, nil
 }
