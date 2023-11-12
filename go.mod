@@ -1,3 +1,3 @@
-module github.com/manosriram/clickdb
+module github.com/manosriram/nimbusdb
 
 go 1.20

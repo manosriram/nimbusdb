@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	db "github.com/manosriram/clickdb"
+	db "github.com/manosriram/nimbusdb"
 )
 
 func main() {
