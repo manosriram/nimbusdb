@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	db "github.com/manosriram/treedb"
+	db "github.com/manosriram/clickdb"
 )
 
 func main() {
