@@ -40,7 +40,7 @@ type Segment struct {
 }
 
 func (s *Segment) BlockSize() int {
-	return len(s.tstamp) + len(s.ksz) + len(s.vsz) + len(s.k) + len(s.v)
+	return BlockSize + len(s.k) + len(s.v)
 }
 
 func (s *Segment) ToByte() []byte {
