@@ -1,8 +1,10 @@
 package nimbusdb
 
 import (
+	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	utils "github.com/manosriram/nimbusdb/utils"
@@ -48,7 +50,21 @@ type Db struct {
 	keyDir         map[string]*Segment
 }
 
-func (db *Db) parseActiveSegmentFile(data []byte) {}
+func (db *Db) parseActiveSegmentFile(data []byte) {
+	index := 0
+
+	for index < len(data) {
+		tstamp := data[index : index+19]
+		ksz := data[index+19 : index+20]
+		vsz := data[index+20 : index+21]
+		intksz, _ := strconv.Atoi(string(ksz))
+		intvsz, _ := strconv.Atoi(string(vsz))
+		k := data[index+21 : index+21+intksz]
+		v := data[index+21+intksz : index+21+intksz+intvsz]
+		fmt.Println(string(tstamp), string(vsz), string(ksz), string(k), string(v))
+		index += 21 + intksz + intvsz
+	}
+}
 
 func Open(dirPath string) (*Db, error) {
 	db := &Db{
