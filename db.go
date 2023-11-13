@@ -4,39 +4,55 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"time"
 
 	utils "github.com/manosriram/nimbusdb/utils"
 )
 
 const (
-	ACTIVE_SEGMENT_DATAFILE_SUFFIX   = ".dfile"
-	SEGMENT_HINTFILE_SUFFIX          = ".hfile"
-	INACTIVE_SEGMENT_DATAFILE_SUFFIX = ".idfile"
+	ActiveSegmentDatafileSuffix   = ".dfile"
+	SegmentHintfileSuffix         = ".hfile"
+	InactiveSegmentDataFileSuffix = ".idfile"
 )
 
 const (
-	TEMPFILE_DATAFILE_PATTERN = "*.dfile"
+	TstampOffset    = 19
+	KeySizeOffset   = 20
+	ValueSizeOffset = 21
+	BlockSize       = 19 + 1 + 1 // tstamp + ksize + vsize
 )
-
-type VTYPE string
 
 const (
-	INT    VTYPE = "i"
-	STRING VTYPE = "s"
-	JSON   VTYPE = "j"
+	TempDataFilePattern = "*.dfile"
 )
+
+// type VTYPE string
 
 type Segment struct {
-	fileId        string
-	segmentOffset uint64
-	segmentSize   uint64
-	tstamp        []byte
-	ksz           []byte
-	vsz           []byte
-	k             []byte
-	v             []byte
+	fileID string
+	offset int
+	size   int
+	tstamp []byte
+	ksz    []byte
+	vsz    []byte
+	k      []byte
+	v      []byte
+}
+
+func (s *Segment) BlockSize() int {
+	return len(s.tstamp) + len(s.ksz) + len(s.vsz) + len(s.k) + len(s.v)
+}
+
+func (s *Segment) ToByte() []byte {
+	segmentInBytes := make([]byte, 0, s.BlockSize())
+
+	segmentInBytes = append(segmentInBytes, s.tstamp...)
+	segmentInBytes = append(segmentInBytes, s.ksz...)
+	segmentInBytes = append(segmentInBytes, s.vsz...)
+	segmentInBytes = append(segmentInBytes, s.k...)
+	segmentInBytes = append(segmentInBytes, s.v...)
+
+	return segmentInBytes
 }
 
 type KeyValuePair struct {
@@ -50,26 +66,66 @@ type Db struct {
 	keyDir         map[string]*Segment
 }
 
-func (db *Db) parseActiveSegmentFile(data []byte) {
-	index := 0
-
-	for index < len(data) {
-		tstamp := data[index : index+19]
-		ksz := data[index+19 : index+20]
-		vsz := data[index+20 : index+21]
-		intksz, _ := strconv.Atoi(string(ksz))
-		intvsz, _ := strconv.Atoi(string(vsz))
-		k := data[index+21 : index+21+intksz]
-		v := data[index+21+intksz : index+21+intksz+intvsz]
-		fmt.Println(string(tstamp), string(vsz), string(ksz), string(k), string(v))
-		index += 21 + intksz + intvsz
+func NewDb(dirPath string) *Db {
+	keyDir := make(map[string]*Segment, 0)
+	return &Db{
+		dirPath: dirPath,
+		keyDir:  keyDir,
 	}
 }
 
-func Open(dirPath string) (*Db, error) {
-	db := &Db{
-		dirPath: dirPath,
+func (db *Db) setKeyDir(key string, value *Segment) interface{} {
+	db.keyDir[key] = value
+	return value
+}
+
+func getSegmentFromOffset(offset int, data []byte) (*Segment, error) {
+	tstamp := data[offset : offset+TstampOffset]
+	ksz := data[offset+TstampOffset : offset+KeySizeOffset]
+	vsz := data[offset+KeySizeOffset : offset+ValueSizeOffset]
+
+	intKSz, err := utils.StringToInt(ksz)
+	if err != nil {
+		return nil, err
 	}
+
+	intVSz, err := utils.StringToInt(vsz)
+	if err != nil {
+		return nil, err
+	}
+
+	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+intKSz]
+	v := data[offset+ValueSizeOffset+intKSz : offset+ValueSizeOffset+intKSz+intVSz]
+
+	return &Segment{
+		tstamp: tstamp,
+		ksz:    ksz,
+		vsz:    vsz,
+		k:      k,
+		v:      v,
+		offset: offset,
+		size:   BlockSize + intKSz + intVSz,
+	}, nil
+}
+
+func (db *Db) parseActiveSegmentFile(data []byte) error {
+	var offset int = 0
+
+	for offset < len(data) {
+		segment, err := getSegmentFromOffset(offset, data)
+		if err != nil {
+			return err
+		}
+		offset += segment.size
+
+		db.setKeyDir(string(segment.k), segment)
+		fmt.Println(string(segment.tstamp), string(segment.vsz), string(segment.ksz), string(segment.k), string(segment.v))
+	}
+	return nil
+}
+
+func Open(dirPath string) (*Db, error) {
+	db := NewDb(dirPath)
 
 	dir, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -80,7 +136,7 @@ func Open(dirPath string) (*Db, error) {
 	if len(dir) == 0 {
 		// no files in path
 		// create an active segment file
-		file, err := os.CreateTemp(dirPath, TEMPFILE_DATAFILE_PATTERN)
+		file, err := os.CreateTemp(dirPath, TempDataFilePattern)
 		db.activeDataFile = file.Name()
 		if err != nil {
 			return nil, err
@@ -94,15 +150,15 @@ func Open(dirPath string) (*Db, error) {
 		}
 
 		fileInfo, _ := file.Info()
-		if path.Ext(fileInfo.Name()) == ACTIVE_SEGMENT_DATAFILE_SUFFIX {
+		if path.Ext(fileInfo.Name()) == ActiveSegmentDatafileSuffix {
 			fileData, _ := os.ReadFile(dirPath + file.Name())
 			db.activeDataFile = dirPath + fileInfo.Name()
 			// TODO
 			db.parseActiveSegmentFile(fileData)
-		} else if path.Ext(fileInfo.Name()) == SEGMENT_HINTFILE_SUFFIX {
+		} else if path.Ext(fileInfo.Name()) == SegmentHintfileSuffix {
 			// TODO
 			continue
-		} else if path.Ext(fileInfo.Name()) == INACTIVE_SEGMENT_DATAFILE_SUFFIX {
+		} else if path.Ext(fileInfo.Name()) == InactiveSegmentDataFileSuffix {
 			// TODO
 			continue
 		}

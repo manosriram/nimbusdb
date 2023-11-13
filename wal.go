@@ -10,12 +10,10 @@ func (db *Db) Write(segment *Segment) error {
 		return err
 	}
 
-	f.Write(segment.tstamp)
-	f.Write(segment.ksz)
-	f.Write(segment.vsz)
-	f.Write(segment.k)
-	f.Write(segment.v)
-
+	_, err = f.Write(segment.ToByte())
+	if err != nil {
+		return err
+	}
 	if err := f.Close(); err != nil {
 		return err
 	}

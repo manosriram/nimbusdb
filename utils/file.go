@@ -1,6 +1,9 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 func Encode(d interface{}) []byte {
 	switch d.(type) {
@@ -11,4 +14,8 @@ func Encode(d interface{}) []byte {
 	default:
 		return d.([]byte)
 	}
+}
+
+func StringToInt(s []byte) (int, error) {
+	return strconv.Atoi(fmt.Sprintf("%s", s))
 }
