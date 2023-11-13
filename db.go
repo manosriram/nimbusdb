@@ -1,9 +1,11 @@
-package db
+package nimbusdb
 
 import (
-	"fmt"
 	"os"
 	"path"
+	"time"
+
+	utils "github.com/manosriram/nimbusdb/utils"
 )
 
 const (
@@ -16,19 +18,34 @@ const (
 	TEMPFILE_DATAFILE_PATTERN = "*.dfile"
 )
 
+type VTYPE string
+
+const (
+	INT    VTYPE = "i"
+	STRING VTYPE = "s"
+	JSON   VTYPE = "j"
+)
+
 type Segment struct {
 	fileId        string
 	segmentOffset uint64
-	tstamp        string
-	ksz           uint32
-	vsz           uint32
+	segmentSize   uint64
+	tstamp        []byte
+	ksz           []byte
+	vsz           []byte
 	k             []byte
-	v             interface{}
+	v             []byte
+}
+
+type KeyValuePair struct {
+	Key   []byte
+	Value interface{}
 }
 
 type Db struct {
-	dirPath string
-	keyDir  map[string]*Segment
+	dirPath        string
+	activeDataFile string
+	keyDir         map[string]*Segment
 }
 
 func (db *Db) parseActiveSegmentFile(data []byte) {}
@@ -48,10 +65,10 @@ func Open(dirPath string) (*Db, error) {
 		// no files in path
 		// create an active segment file
 		file, err := os.CreateTemp(dirPath, TEMPFILE_DATAFILE_PATTERN)
+		db.activeDataFile = file.Name()
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(file)
 	}
 
 	// Found files in dir
@@ -63,9 +80,31 @@ func Open(dirPath string) (*Db, error) {
 		fileInfo, _ := file.Info()
 		if path.Ext(fileInfo.Name()) == ACTIVE_SEGMENT_DATAFILE_SUFFIX {
 			fileData, _ := os.ReadFile(dirPath + file.Name())
+			db.activeDataFile = dirPath + fileInfo.Name()
+			// TODO
 			db.parseActiveSegmentFile(fileData)
+		} else if path.Ext(fileInfo.Name()) == SEGMENT_HINTFILE_SUFFIX {
+			// TODO
+			continue
+		} else if path.Ext(fileInfo.Name()) == INACTIVE_SEGMENT_DATAFILE_SUFFIX {
+			// TODO
+			continue
 		}
 	}
 
 	return db, nil
+}
+
+func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
+	encode := utils.Encode
+	newSegment := &Segment{
+		tstamp: encode(time.Now().UnixNano()),
+		ksz:    encode(len(kv.Key)),
+		vsz:    encode(len(encode(kv.Value))),
+		k:      encode(kv.Key),
+		v:      encode(kv.Value),
+	}
+
+	err := db.Write(newSegment)
+	return kv.Value, err
 }
