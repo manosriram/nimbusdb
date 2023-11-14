@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -14,6 +15,14 @@ func Encode(d interface{}) []byte {
 	default:
 		return d.([]byte)
 	}
+}
+
+func ReadFile(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func StringToInt(s []byte) (int, error) {
