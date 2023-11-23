@@ -1,10 +1,40 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
+
+func HasTimestampExpired(timestamp int64) bool {
+	tstamp := time.Unix(0, timestamp).UnixNano()
+	now := time.Now().UnixNano()
+	if tstamp < now {
+		return true
+	}
+	return false
+}
+
+func Int64ToByte(n int64) []byte {
+	data := uint64(n)
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+
+	enc.Encode(data)
+	return buf.Bytes()
+}
+
+func ByteToInt64(b []byte) int64 {
+	var x uint64
+	debuf := bytes.NewBuffer(b)
+	dec := gob.NewDecoder(debuf)
+	dec.Decode(&x)
+
+	return int64(x)
+}
 
 func Encode(d interface{}) []byte {
 	switch d.(type) {

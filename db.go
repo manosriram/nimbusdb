@@ -1,11 +1,11 @@
 package nimbusdb
 
 import (
-	"encoding/binary"
 	"fmt"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	utils "github.com/manosriram/nimbusdb/utils"
@@ -15,17 +15,18 @@ const (
 	ActiveSegmentDatafileSuffix   = ".dfile"
 	SegmentHintfileSuffix         = ".hfile"
 	InactiveSegmentDataFileSuffix = ".idfile"
+	TempDataFilePattern           = "*.dfile"
 )
 
 const (
-	TstampOffset    = 8
-	KeySizeOffset   = 12
-	ValueSizeOffset = 16
+	TstampOffset    = 12
+	KeySizeOffset   = 16
+	ValueSizeOffset = 20
 	BlockSize       = 8 + 1 + 1 // tstamp + ksize + vsize
 )
 
 const (
-	TempDataFilePattern = "*.dfile"
+	KV_EXPIRES_IN = 24 * time.Hour
 )
 
 // type VTYPE string
@@ -48,22 +49,10 @@ func (s *Segment) BlockSize() int {
 func (s *Segment) ToByte() []byte {
 	segmentInBytes := make([]byte, 0, s.BlockSize())
 
-	buf := make([]byte, 0, s.BlockSize())
-	buffer := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buffer, uint64(s.tstamp))
-	buf = append(buf, buffer...)
-
-	buffer = make([]byte, 4)
-	binary.LittleEndian.PutUint32(buffer, uint32(s.ksz))
-	buf = append(buf, buffer...)
-
-	buffer = make([]byte, 4)
-	binary.LittleEndian.PutUint32(buffer, uint32(s.vsz))
-	buf = append(buf, buffer...)
-
-	fmt.Println(len(buf))
-	fmt.Println(buf)
-	fmt.Println(string(buf))
+	buf := make([]byte, 0)
+	buf = append(buf, utils.Int64ToByte(s.tstamp)...)
+	buf = append(buf, utils.Int64ToByte(int64(s.ksz))...)
+	buf = append(buf, utils.Int64ToByte(int64(s.vsz))...)
 
 	segmentInBytes = append(segmentInBytes, buf...)
 	segmentInBytes = append(segmentInBytes, s.k...)
@@ -97,6 +86,9 @@ func (db *Db) LastOffset() int {
 }
 
 func (db *Db) setKeyDir(key string, value *Segment) interface{} {
+	if key == "" || len(value.k) == 0 || len(value.v) == 0 {
+		return nil
+	}
 	db.keyDir[key] = value
 	return value
 }
@@ -107,14 +99,12 @@ func (db *Db) getKeyDir(key string) (*Segment, error) {
 		return nil, nil
 	}
 
-	tstampString, err := strconv.ParseInt(string(v.tstamp), 10, 64)
+	tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	tstamp := time.Unix(0, tstampString).UnixNano()
-	now := time.Now().UnixNano()
-	if tstamp < now {
-		fmt.Println("key expired! deleting from keyDir")
+	hasTimestampExpired := utils.HasTimestampExpired(tstampString)
+	if hasTimestampExpired {
 		delete(db.keyDir, key)
 		return nil, nil
 	}
@@ -122,31 +112,25 @@ func (db *Db) getKeyDir(key string) (*Segment, error) {
 }
 
 func getSegmentFromOffset(offset int, data []byte) (*Segment, error) {
-	b := make([]byte, 8)
-	tstamp := data[offset : offset+8]
-	tstamp64Bit := binary.LittleEndian.Uint64(tstamp)
-	binary.LittleEndian.PutUint64(b, tstamp64Bit)
-	fmt.Println(string(b))
+	// get timestamp
+	tstamp := data[offset : offset+TstampOffset]
+	tstamp64Bit := utils.ByteToInt64(tstamp)
 
+	// get key size
 	ksz := data[offset+TstampOffset : offset+KeySizeOffset]
-	intKsz := binary.LittleEndian.Uint16(ksz)
+	intKsz := utils.ByteToInt64(ksz)
 
+	// get value size
 	vsz := data[offset+KeySizeOffset : offset+ValueSizeOffset]
-	intVsz := binary.LittleEndian.Uint16(vsz)
+	intVsz := utils.ByteToInt64(vsz)
 
-	intKSz, err := utils.StringToInt(ksz)
-	if err != nil {
-		return nil, err
-	}
+	// get key
+	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+int(intKsz)]
 
-	intVSz, err := utils.StringToInt(vsz)
-	if err != nil {
-		return nil, err
-	}
+	// get value
+	v := data[offset+ValueSizeOffset+int(intKsz) : offset+ValueSizeOffset+int(intKsz)+int(intVsz)]
 
-	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+intKSz]
-	v := data[offset+ValueSizeOffset+intKSz : offset+ValueSizeOffset+intKSz+intVSz]
-
+	// make segment
 	x := &Segment{
 		tstamp: int64(tstamp64Bit),
 		ksz:    int32(intKsz),
@@ -154,10 +138,9 @@ func getSegmentFromOffset(offset int, data []byte) (*Segment, error) {
 		k:      k,
 		v:      v,
 		offset: offset,
-		size:   BlockSize + intKSz + intVSz,
+		size:   BlockSize + int(intKsz) + int(intVsz),
 	}
-	fmt.Println(x)
-	return nil, nil
+	return x, nil
 }
 
 func (db *Db) parseActiveSegmentFile(filePath string) error {
@@ -167,24 +150,28 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 	}
 
 	var offset int = 0
-	for offset < len(data) {
-		segment, _ := getSegmentFromOffset(offset, data)
-		fmt.Println(segment)
-		break
-		// if err != nil {
-		// return err
+	for offset <= len(data) {
+		segment, err := getSegmentFromOffset(offset, data)
+		if err != nil {
+			return err
+		}
+
+		// v, _ := db.getKeyDir(string(segment.k))
+		// if v != nil {
+		// // db.ExpireKey(offset)
+		// // offset += segment.size
+		// // db.lastOffset = offset
+		// continue
 		// }
 
-		// segment.fileID = strings.Split(path.Base(filePath), ".")[0]
-		// v, _ := db.getKeyDir(string(segment.k))
-		// // fmt.Println("getting ", string(segment.k))
-		// if v != nil {
-		// db.ExpireKey(offset)
-		// }
-		// // fmt.Println(string(segment.tstamp), string(segment.vsz), string(segment.ksz), string(segment.k), string(segment.v), segment.fileID)
-		// db.setKeyDir(string(segment.k), segment)
-		// offset += segment.size
-		// db.lastOffset = offset
+		segment.fileID = strings.Split(path.Base(filePath), ".")[0]
+		hasTimestampExpired := utils.HasTimestampExpired(segment.tstamp)
+		if !hasTimestampExpired {
+			db.setKeyDir(string(segment.k), segment) // TODO: use Set here?
+		}
+		offset += segment.size
+		db.lastOffset = offset
+		// break
 	}
 	return nil
 }
@@ -231,11 +218,16 @@ func Open(dirPath string) (*Db, error) {
 	return db, nil
 }
 
-func (db *Db) All() {
-	fmt.Println("all in")
-	for _, v := range db.keyDir {
-		fmt.Printf("key: %s, value: %s\n", v.k, v.v)
+func (db *Db) All() error {
+	for _, pair := range db.keyDir {
+		value, err := db.Get(pair.k)
+		if err != nil {
+			// fmt.Printf("%s", err.Error())
+			continue
+		}
+		fmt.Printf("key: %s, value: %s\n", pair.k, value)
 	}
+	return nil
 }
 
 func (db *Db) GetSegmentFromKey(key []byte) (*Segment, error) {
@@ -245,12 +237,14 @@ func (db *Db) GetSegmentFromKey(key []byte) (*Segment, error) {
 
 func (db *Db) Get(key []byte) ([]byte, error) {
 	v, _ := db.getKeyDir(string(key))
+	if v == nil {
+		return nil, fmt.Errorf("key expired or does not exist")
+	}
 	return v.v, nil
 }
 
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	oldValue, _ := db.GetSegmentFromKey(kv.Key)
-	fmt.Println(oldValue)
 	if oldValue != nil {
 		db.ExpireKey(oldValue.offset)
 	}
@@ -267,7 +261,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 
 	encode := utils.Encode
 	newSegment := &Segment{
-		tstamp: int64(time.Now().Add(1 * time.Hour).UnixNano()),
+		tstamp: int64(time.Now().Add(KV_EXPIRES_IN).UnixNano()),
 		ksz:    int32(len(kv.Key)),
 		vsz:    int32(len(encode(kv.Value))),
 		k:      encode(kv.Key),
@@ -278,11 +272,9 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 
 	err = db.WriteSegment(newSegment)
 	if err != nil {
-		fmt.Println("err = ", err)
 		return nil, err
 	}
 	db.setKeyDir(string(kv.Key), newSegment)
 	db.lastOffset = db.LastOffset() + BlockSize + intKSz + intVSz
-	// fmt.Println(db.keyDir)
 	return kv.Value, err
 }
