@@ -152,9 +152,15 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	vsz := data[offset+KeySizeOffset : offset+ValueSizeOffset]
 	intVsz := utils.ByteToInt64(vsz)
 
+	if int(offset+ValueSizeOffset+intKsz) > len(data) {
+		return nil, fmt.Errorf("exceeded data array length")
+	}
 	// get key
 	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+intKsz]
 
+	if int(offset+ValueSizeOffset+intKsz+intVsz) > len(data) {
+		return nil, fmt.Errorf("exceeded data array length")
+	}
 	// get value
 	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
 
@@ -188,11 +194,13 @@ func (db *Db) SeekOffsetFromDataFile(kdValue KeyDirValue) *Segment {
 	// get value size
 	vsz := data[KeySizeOffset:ValueSizeOffset]
 	intVsz := utils.ByteToInt64(vsz)
+	// fmt.Println(intKsz, intVsz)
 
 	k := data[ValueSizeOffset : ValueSizeOffset+intKsz]
 
 	// get value
 	v := data[ValueSizeOffset+intKsz : ValueSizeOffset+intKsz+intVsz]
+	// fmt.Println(nextData[intKsz:])
 
 	return &Segment{
 		tstamp: int64(tstamp64Bit),
@@ -206,13 +214,13 @@ func (db *Db) SeekOffsetFromDataFile(kdValue KeyDirValue) *Segment {
 }
 
 func (db *Db) parseActiveSegmentFile(filePath string) error {
-	data, err := utils.ReadFile(filePath)
+	data, err := utils.ReadFile(filePath) // TODO: read in blocks
 	if err != nil {
 		return err
 	}
 
 	var offset int64 = 0
-	for offset <= int64(len(data)) {
+	for offset < int64(len(data)) {
 		segment, err := getSegmentFromOffset(offset, data)
 		if err != nil {
 			return err
@@ -236,13 +244,16 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 			db.setKeyDir(string(segment.k), kdValue) // TODO: use Set here?
 		}
 
-		if int(offset+TotalBlockSize) > len(data) {
+		if int(offset+BlockSize) > len(data) {
 			offset += segment.size
 			break
+			// db.lastOffset = offset
 		}
 
 		offset += segment.size
+		// db.lastOffset = offset
 	}
+	// fmt.Println(db.keyDir)
 	return nil
 }
 
@@ -298,6 +309,7 @@ func (db *Db) Count() int64 {
 }
 
 func (db *Db) All() error {
+	fmt.Println(len(db.keyDir))
 	for key, value := range db.keyDir {
 		v := db.SeekOffsetFromDataFile(value)
 		// if err != nil {
@@ -337,6 +349,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Println(intKSz, intVSz)
 
 	encode := utils.Encode
 	newSegment := &Segment{
@@ -348,15 +361,23 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		size:   int64(BlockSize + intKSz + intVSz),
 		offset: db.LastOffset(),
 	}
+	// if db.LastOffset() == 0 {
+	// newSegment.offset = db.LastOffset()
+	// } else {
+	// newSegment.offset = db.LastOffset() - BlockSize
+	// }
 
 	err = db.WriteSegment(newSegment)
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Println("written ", newSegment.size)
+	// fmt.Println("written at ", newSegment.offset)
 	kdValue := KeyDirValue{
 		offset: newSegment.offset,
 		size:   newSegment.size,
 	}
 	db.setKeyDir(string(kv.Key), kdValue)
+	// db.lastOffset = db.LastOffset() + newSegment.size
 	return kv.Value, err
 }

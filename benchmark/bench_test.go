@@ -22,7 +22,6 @@ func BenchmarkGetSet(t *testing.B) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	_, err = d.Set(kv)
 	if err != nil {
 		log.Fatal(err)

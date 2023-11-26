@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/manosriram/nimbusdb"
 	"github.com/stretchr/testify/assert"
 )
@@ -13,6 +14,7 @@ import (
 var PWD, _ = os.Getwd()
 var TEST_DATAFILE_PATH = fmt.Sprintf("%s/../test_data/", PWD)
 var CONCURRENT_TEST_DATAFILE_PATH = fmt.Sprintf("%s/../concurrent_test_data/", PWD)
+var keys [][]byte
 
 func TestDbOpen(t *testing.T) {
 	d, err := nimbusdb.Open(TEST_DATAFILE_PATH)
@@ -55,9 +57,11 @@ func Test_StressSet(t *testing.T) {
 
 	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("abcdefghijklmnopqstuvwxyzsdljhasldkjasdla%d", i)),
+			Key:   []byte(uuid.NewString()),
 			Value: []byte("testvalue"),
 		}
+		// fmt.Println(string(kv.Key))
+		keys = append(keys, kv.Key)
 		v, err := d.Set(kv)
 		assert.Equal(t, err, nil)
 		assert.Equal(t, v, []byte("testvalue"))
@@ -70,8 +74,9 @@ func Test_StressGet(t *testing.T) {
 	assert.NotEqual(t, d, nil)
 
 	for i := 0; i < 100000; i++ {
+		// fmt.Println(string(keys[i]))
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("abcdefghijklmnopqstuvwxyzsdljhasldkjasdla%d", i)),
+			Key:   keys[i],
 			Value: []byte("testvalue"),
 		}
 		v, err := d.Get(kv.Key)
