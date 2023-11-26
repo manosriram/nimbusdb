@@ -24,7 +24,7 @@ func (db *Db) WriteSegment(segment *Segment) error {
 	return nil
 }
 
-func (db *Db) ExpireKey(offset int) error {
+func (db *Db) ExpireKey(offset int64) error {
 	f, err := os.OpenFile(db.activeDataFile, os.O_RDWR, 0644)
 	if err != nil {
 		return err

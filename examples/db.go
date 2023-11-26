@@ -18,7 +18,6 @@ func main() {
 
 		text = strings.TrimSpace(text)
 
-		fmt.Println(text)
 		if text == "set" {
 			key, _ := reader.ReadString('\n')
 			value, _ := reader.ReadString('\n')
@@ -28,7 +27,8 @@ func main() {
 				Key:   []byte(key),
 				Value: []byte(value),
 			}
-			d.Set(kv)
+			_, err := d.Set(kv)
+			fmt.Println(err)
 		} else if text == "all" {
 			d.All()
 		} else if text == "exit" {
@@ -44,6 +44,14 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
+		} else if text == "seek" {
+			// offset, _ := reader.ReadString('\n')
+			// o, _ := strconv.Atoi(fmt.Sprintf("%d", offset))
+			// kdValue := nimbusdb.KeyDirValue{
+			// offset: 31,
+			// }
+			// s := d.SeekOffsetFromDataFile(31)
+			// fmt.Println("kv = ", string(s.Key()), string(s.Value()))
 		}
 	}
 }

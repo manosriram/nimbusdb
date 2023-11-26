@@ -2,10 +2,12 @@ package nimbusdb
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	utils "github.com/manosriram/nimbusdb/utils"
@@ -19,10 +21,13 @@ const (
 )
 
 const (
-	TstampOffset    = 12
-	KeySizeOffset   = 16
-	ValueSizeOffset = 20
-	BlockSize       = 8 + 1 + 1 // tstamp + ksize + vsize
+	TstampOffset    int64 = 12
+	KeySizeOffset   int64 = 16
+	ValueSizeOffset int64 = 20
+	BlockSize             = 12 + 4 + 4 // tstamp + ksize + vsize
+)
+const (
+	TotalBlockSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + BlockSize
 )
 
 const (
@@ -33,8 +38,8 @@ const (
 
 type Segment struct {
 	fileID string
-	offset int
-	size   int
+	offset int64
+	size   int64
 	tstamp int64
 	ksz    int32
 	vsz    int32
@@ -44,6 +49,14 @@ type Segment struct {
 
 func (s *Segment) BlockSize() int {
 	return BlockSize + len(s.k) + len(s.v)
+}
+
+func (s *Segment) Key() []byte {
+	return s.k
+}
+
+func (s *Segment) Value() []byte {
+	return s.v
 }
 
 func (s *Segment) ToByte() []byte {
@@ -66,39 +79,51 @@ type KeyValuePair struct {
 	Value interface{}
 }
 
+type KeyDirValue struct {
+	offset int64
+	size   int64
+}
+
 type Db struct {
+	mu             sync.Mutex
 	dirPath        string
 	activeDataFile string
-	lastOffset     int
-	keyDir         map[string]*Segment
+	lastOffset     int64
+	keyDir         map[string]KeyDirValue
 }
 
 func NewDb(dirPath string) *Db {
-	keyDir := make(map[string]*Segment, 0)
+	keyDir := make(map[string]KeyDirValue, 0)
 	return &Db{
 		dirPath: dirPath,
 		keyDir:  keyDir,
 	}
 }
 
-func (db *Db) LastOffset() int {
+func (db *Db) LastOffset() int64 {
 	return db.lastOffset
 }
 
-func (db *Db) setKeyDir(key string, value *Segment) interface{} {
-	if key == "" || len(value.k) == 0 || len(value.v) == 0 {
+func (db *Db) setKeyDir(key string, kdValue KeyDirValue) interface{} {
+	if key == "" || kdValue.offset < 0 {
 		return nil
 	}
-	db.keyDir[key] = value
-	return value
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.keyDir[key] = kdValue
+	db.lastOffset = kdValue.offset + kdValue.size
+	return db.keyDir[key]
 }
 
 func (db *Db) getKeyDir(key string) (*Segment, error) {
-	v := db.keyDir[key]
-	if v == nil {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	x, ok := db.keyDir[key]
+	if !ok {
 		return nil, nil
 	}
 
+	v := db.SeekOffsetFromDataFile(x)
 	tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
 	if err != nil {
 		return nil, err
@@ -108,11 +133,14 @@ func (db *Db) getKeyDir(key string) (*Segment, error) {
 		delete(db.keyDir, key)
 		return nil, nil
 	}
-	return db.keyDir[key], nil
+	return v, nil
 }
 
-func getSegmentFromOffset(offset int, data []byte) (*Segment, error) {
+func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	// get timestamp
+	if int(offset+BlockSize) > len(data) {
+		return nil, fmt.Errorf("exceeded data array length")
+	}
 	tstamp := data[offset : offset+TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
 
@@ -125,10 +153,10 @@ func getSegmentFromOffset(offset int, data []byte) (*Segment, error) {
 	intVsz := utils.ByteToInt64(vsz)
 
 	// get key
-	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+int(intKsz)]
+	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+intKsz]
 
 	// get value
-	v := data[offset+ValueSizeOffset+int(intKsz) : offset+ValueSizeOffset+int(intKsz)+int(intVsz)]
+	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
 
 	// make segment
 	x := &Segment{
@@ -138,9 +166,43 @@ func getSegmentFromOffset(offset int, data []byte) (*Segment, error) {
 		k:      k,
 		v:      v,
 		offset: offset,
-		size:   BlockSize + int(intKsz) + int(intVsz),
+		size:   BlockSize + intKsz + intVsz,
 	}
 	return x, nil
+}
+
+func (db *Db) SeekOffsetFromDataFile(kdValue KeyDirValue) *Segment {
+	// data, err := utils.ReadFile(db.activeDataFile)
+	f, _ := os.Open(db.activeDataFile)
+	data := make([]byte, kdValue.size)
+	f.Seek(kdValue.offset, io.SeekCurrent)
+	f.Read(data)
+
+	tstamp := data[:TstampOffset]
+	tstamp64Bit := utils.ByteToInt64(tstamp)
+
+	// get key size
+	ksz := data[TstampOffset:KeySizeOffset]
+	intKsz := utils.ByteToInt64(ksz)
+
+	// get value size
+	vsz := data[KeySizeOffset:ValueSizeOffset]
+	intVsz := utils.ByteToInt64(vsz)
+
+	k := data[ValueSizeOffset : ValueSizeOffset+intKsz]
+
+	// get value
+	v := data[ValueSizeOffset+intKsz : ValueSizeOffset+intKsz+intVsz]
+
+	return &Segment{
+		tstamp: int64(tstamp64Bit),
+		ksz:    int32(intKsz),
+		vsz:    int32(intVsz),
+		k:      k,
+		v:      v,
+		offset: kdValue.offset, // make this int64
+		size:   kdValue.size,
+	}
 }
 
 func (db *Db) parseActiveSegmentFile(filePath string) error {
@@ -149,8 +211,8 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 		return err
 	}
 
-	var offset int = 0
-	for offset <= len(data) {
+	var offset int64 = 0
+	for offset <= int64(len(data)) {
 		segment, err := getSegmentFromOffset(offset, data)
 		if err != nil {
 			return err
@@ -167,17 +229,30 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 		segment.fileID = strings.Split(path.Base(filePath), ".")[0]
 		hasTimestampExpired := utils.HasTimestampExpired(segment.tstamp)
 		if !hasTimestampExpired {
-			db.setKeyDir(string(segment.k), segment) // TODO: use Set here?
+			kdValue := KeyDirValue{
+				offset: segment.offset,
+				size:   segment.size,
+			}
+			db.setKeyDir(string(segment.k), kdValue) // TODO: use Set here?
 		}
+
+		if int(offset+TotalBlockSize) > len(data) {
+			offset += segment.size
+			break
+		}
+
 		offset += segment.size
-		db.lastOffset = offset
-		// break
 	}
 	return nil
 }
 
 func Open(dirPath string) (*Db, error) {
 	db := NewDb(dirPath)
+
+	err := os.MkdirAll(dirPath, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
 
 	dir, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -218,14 +293,18 @@ func Open(dirPath string) (*Db, error) {
 	return db, nil
 }
 
+func (db *Db) Count() int64 {
+	return int64(len(db.keyDir))
+}
+
 func (db *Db) All() error {
-	for _, pair := range db.keyDir {
-		value, err := db.Get(pair.k)
-		if err != nil {
-			// fmt.Printf("%s", err.Error())
-			continue
-		}
-		fmt.Printf("key: %s, value: %s\n", pair.k, value)
+	for key, value := range db.keyDir {
+		v := db.SeekOffsetFromDataFile(value)
+		// if err != nil {
+		// // fmt.Printf("%s", err.Error())
+		// continue
+		// }
+		fmt.Printf("key: %s, value: %s, offset: %d\n", key, v.v, v.offset)
 	}
 	return nil
 }
@@ -266,7 +345,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		vsz:    int32(len(encode(kv.Value))),
 		k:      encode(kv.Key),
 		v:      encode(kv.Value),
-		size:   BlockSize + intKSz + intVSz,
+		size:   int64(BlockSize + intKSz + intVSz),
 		offset: db.LastOffset(),
 	}
 
@@ -274,7 +353,10 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.setKeyDir(string(kv.Key), newSegment)
-	db.lastOffset = db.LastOffset() + BlockSize + intKSz + intVSz
+	kdValue := KeyDirValue{
+		offset: newSegment.offset,
+		size:   newSegment.size,
+	}
+	db.setKeyDir(string(kv.Key), kdValue)
 	return kv.Value, err
 }
