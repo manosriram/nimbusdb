@@ -18,7 +18,7 @@ var kv = &nimbusdb.KeyValuePair{
 }
 
 func BenchmarkGetSet(t *testing.B) {
-	d, err := nimbusdb.Open(TEST_DATAFILE_PATH)
+	d, err := nimbusdb.Open(TEST_DATAFILE_PATH, true)
 	if err != nil {
 		log.Fatal(err)
 	}

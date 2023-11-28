@@ -9,8 +9,12 @@ import (
 	"github.com/manosriram/nimbusdb"
 )
 
+const (
+	DirPath = "/Users/manosriram/go/src/nimbusdb/test_data/"
+)
+
 func main() {
-	d, _ := nimbusdb.Open("/Users/manosriram/go/src/nimbusdb/data/")
+	d, _ := nimbusdb.Open(DirPath, false)
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter text: ")
@@ -52,6 +56,10 @@ func main() {
 			// }
 			// s := d.SeekOffsetFromDataFile(31)
 			// fmt.Println("kv = ", string(s.Key()), string(s.Value()))
+		} else if text == "size" {
+			fmt.Println(d.Count())
+		} else if text == "stat" {
+			d.CreateActiveDatafile(DirPath)
 		}
 	}
 }
