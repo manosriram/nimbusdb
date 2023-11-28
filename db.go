@@ -33,7 +33,7 @@ const (
 	InactiveSegmentDataFileSuffix = ".idfile"
 	TempDataFilePattern           = "*.dfile"
 	HomePath                      = "/Users/manosriram/go/src/nimbusdb" // TODO: refactor this
-	DatafileThreshold             = 1 * MB
+	DatafileThreshold             = 25 * MB
 )
 
 const (
