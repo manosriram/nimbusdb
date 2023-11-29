@@ -14,7 +14,7 @@ const (
 )
 
 func main() {
-	d, _ := nimbusdb.Open(DirPath, false)
+	d, _ := nimbusdb.Open(DirPath, true)
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter text: ")
@@ -60,6 +60,8 @@ func main() {
 			fmt.Println(d.Count())
 		} else if text == "stat" {
 			d.CreateActiveDatafile(DirPath)
+		} else if text == "sync" {
+			d.Sync()
 		}
 	}
 }

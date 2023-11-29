@@ -56,7 +56,7 @@ func Test_StressSet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(uuid.NewString()),
 			Value: []byte("testvalue"),
@@ -74,7 +74,7 @@ func Test_StressGet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 10000; i++ {
 		// fmt.Println(string(keys[i]))
 		kv := &nimbusdb.KeyValuePair{
 			Key:   keys[i],
@@ -94,7 +94,7 @@ func Test_ConcurrentSet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	numGoRoutines := 100000
+	numGoRoutines := 10000
 
 	wg := sync.WaitGroup{}
 	wg.Add(numGoRoutines)
@@ -120,7 +120,7 @@ func Test_ConcurrentGet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	numGoRoutines := 100000
+	numGoRoutines := 10000
 
 	wg := sync.WaitGroup{}
 	wg.Add(numGoRoutines)

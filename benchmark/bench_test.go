@@ -3,31 +3,27 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"testing"
 
 	"github.com/manosriram/nimbusdb"
 )
 
-var PWD, _ = os.Getwd()
-var TEST_DATAFILE_PATH = fmt.Sprintf("%s/../test_data/", PWD)
-
-var kv = &nimbusdb.KeyValuePair{
-	Key:   []byte("testkey"),
-	Value: []byte("testvalue"),
-}
-
 func BenchmarkGetSet(t *testing.B) {
-	d, err := nimbusdb.Open(TEST_DATAFILE_PATH, true)
+	const (
+		DirPath = "/Users/manosriram/go/src/nimbusdb/test_data/"
+	)
+
+	d, err := nimbusdb.Open(DirPath, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = d.Set(kv)
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = d.Get(kv.Key)
-	if err != nil {
-		log.Fatal(err)
+	for i := 0; i < 200000; i++ {
+		x := fmt.Sprintf("%d", i)
+		kv := &nimbusdb.KeyValuePair{
+			Key:   []byte(x),
+			Value: []byte("testvalue"),
+		}
+		d.Set(kv)
+		d.Get(kv.Key)
 	}
 }
