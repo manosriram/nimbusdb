@@ -394,7 +394,6 @@ func Open(opts *Options) (*Db, error) {
 		fileInfo, _ := file.Info()
 		if path.Ext(fileInfo.Name()) == ActiveSegmentDatafileSuffix {
 			db.activeDataFile = dirPath + "/" + fileInfo.Name()
-			fmt.Println("ac = ", db.activeDataFile)
 			db.parseActiveSegmentFile(db.activeDataFile)
 		} else if path.Ext(fileInfo.Name()) == SegmentHintfileSuffix {
 			// TODO

@@ -31,7 +31,7 @@ func (db *Db) ExpireKey(offset int64) error {
 	}
 
 	expireTstamp := time.Now().Add(-1 * time.Hour).UnixNano()
-	_, err = f.WriteAt(utils.Encode(expireTstamp), int64(offset))
+	_, err = f.WriteAt(utils.Int64ToByte(expireTstamp), int64(offset))
 	if err != nil {
 		return err
 	}
