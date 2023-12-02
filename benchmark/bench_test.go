@@ -8,19 +8,18 @@ import (
 	"github.com/manosriram/nimbusdb"
 )
 
-func BenchmarkGetSet(t *testing.B) {
+func BenchmarkGetSet(b *testing.B) {
 	const (
-		DirPath = "/Users/manosriram/go/src/nimbusdb/test_data/"
+		DirPath = "/Users/manosriram/nimbusdb/test_data/"
 	)
 
-	d, err := nimbusdb.Open(DirPath, true)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
 	if err != nil {
 		log.Fatal(err)
 	}
-	for i := 0; i < 200000; i++ {
-		x := fmt.Sprintf("%d", i)
+	for i := 0; i < b.N; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(x),
+			Key:   []byte(fmt.Sprintf("%d", i)),
 			Value: []byte("testvalue"),
 		}
 		d.Set(kv)

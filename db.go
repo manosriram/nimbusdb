@@ -1,6 +1,7 @@
 package nimbusdb
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -33,21 +34,23 @@ const (
 	TempDataFilePattern           = "*.dfile"
 	TempInactiveDataFilePattern   = "*.idfile"
 	DefaultDataDir                = "nimbusdb"
-	DatafileThreshold             = 200 * KB
+	DatafileThreshold             = 5 * MB
 )
 
 const (
 	TstampOffset    int64 = 12
-	KeySizeOffset   int64 = 16
-	ValueSizeOffset int64 = 20
+	KeySizeOffset         = 16
+	ValueSizeOffset       = 20
 	BlockSize             = 12 + 4 + 4 // tstamp + ksize + vsize
+	ChunkSize             = 50 * KB
 )
 const (
 	TotalBlockSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + BlockSize
 )
 
 const (
-	KV_EXPIRES_IN = 24 * time.Hour
+	KEY_EXPIRES_IN_DEFAULT = 24 * time.Hour
+	KEY_NOT_FOUND          = "key expired or does not exist"
 )
 
 type Segment struct {
@@ -95,8 +98,9 @@ func (s *Segment) ToByte() []byte {
 }
 
 type KeyValuePair struct {
-	Key   []byte
-	Value interface{}
+	Key       []byte
+	Value     interface{}
+	ExpiresIn time.Duration
 }
 
 type KeyDirValue struct {
@@ -149,7 +153,11 @@ func (db *Db) getKeyDir(key string) (*Segment, error) {
 		return nil, nil
 	}
 
-	v := db.SeekOffsetFromDataFile(x)
+	v, err := db.seekOffsetFromDataFile(x)
+	if err != nil {
+		return nil, err
+	}
+
 	tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
 	if err != nil {
 		return nil, err
@@ -169,6 +177,11 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	}
 	tstamp := data[offset : offset+TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
+
+	hasTimestampExpired := utils.HasTimestampExpired(tstamp64Bit)
+	if hasTimestampExpired {
+		return nil, errors.New(KEY_NOT_FOUND)
+	}
 
 	// get key size
 	ksz := data[offset+TstampOffset : offset+KeySizeOffset]
@@ -203,8 +216,7 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	return x, nil
 }
 
-func (db *Db) SeekOffsetFromDataFile(kdValue KeyDirValue) *Segment {
-
+func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
 	// TODO: improve dfile and idfile recognizing
 	f, err := os.Open(fmt.Sprintf("%s/%s.dfile", db.dirPath, kdValue.path))
 	if err != nil {
@@ -216,6 +228,11 @@ func (db *Db) SeekOffsetFromDataFile(kdValue KeyDirValue) *Segment {
 
 	tstamp := data[:TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
+
+	hasTimestampExpired := utils.HasTimestampExpired(tstamp64Bit)
+	if hasTimestampExpired {
+		return nil, errors.New(KEY_NOT_FOUND)
+	}
 
 	// get key size
 	ksz := data[TstampOffset:KeySizeOffset]
@@ -237,7 +254,7 @@ func (db *Db) SeekOffsetFromDataFile(kdValue KeyDirValue) *Segment {
 		v:      v,
 		offset: kdValue.offset,
 		size:   kdValue.size,
-	}
+	}, nil
 }
 
 func (db *Db) getActiveFileSegments(filePath string) ([]*Segment, error) {
@@ -355,6 +372,10 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 	return nil
 }
 
+func (db *Db) Close(opts *Options) error {
+	return nil
+}
+
 func Open(opts *Options) (*Db, error) {
 	dirPath := opts.Path
 	if dirPath == "" {
@@ -363,7 +384,7 @@ func Open(opts *Options) (*Db, error) {
 			return nil, err
 		}
 
-		dirPath = filepath.Join(home, DefaultDataDir)
+		dirPath = utils.JoinPaths(home, DefaultDataDir)
 	}
 	db := NewDb(dirPath)
 	err := os.MkdirAll(dirPath, os.ModePerm)
@@ -389,7 +410,7 @@ func Open(opts *Options) (*Db, error) {
 			return nil
 		}
 
-		filePath := filepath.Join(dirPath, file.Name())
+		filePath := utils.JoinPaths(dirPath, file.Name())
 		if path.Ext(file.Name()) == ActiveSegmentDatafileSuffix {
 			db.activeDataFile = filePath
 			db.parseActiveSegmentFile(db.activeDataFile)
@@ -411,7 +432,10 @@ func (db *Db) Count() int64 {
 
 func (db *Db) All() error {
 	for key, value := range db.keyDir {
-		v := db.SeekOffsetFromDataFile(value)
+		v, err := db.seekOffsetFromDataFile(value)
+		if err != nil {
+			return nil
+		}
 		fmt.Printf("key: %s, value: %s, offset: %d\n", key, v.v, v.offset)
 	}
 	return nil
@@ -425,7 +449,7 @@ func (db *Db) GetSegmentFromKey(key []byte) (*Segment, error) {
 func (db *Db) Get(key []byte) ([]byte, error) {
 	v, _ := db.getKeyDir(string(key))
 	if v == nil {
-		return nil, fmt.Errorf("key expired or does not exist")
+		return nil, errors.New(KEY_NOT_FOUND)
 	}
 	return v.v, nil
 }
@@ -453,7 +477,7 @@ func (db *Db) LimitDatafileToThreshold(add int64, opts *Options) {
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	oldValue, _ := db.GetSegmentFromKey(kv.Key)
 	if oldValue != nil {
-		db.ExpireKey(oldValue.offset)
+		db.ExpireKey(oldValue.offset) // TODO: fix this
 	}
 
 	intKSz, err := utils.StringToInt(utils.Encode(len(kv.Key)))
@@ -468,15 +492,19 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 
 	encode := utils.Encode
 	newSegment := &Segment{
-		tstamp: int64(time.Now().Add(KV_EXPIRES_IN).UnixNano()),
 		ksz:    int32(len(kv.Key)),
 		vsz:    int32(len(encode(kv.Value))),
 		k:      encode(kv.Key),
 		v:      encode(kv.Value),
 		size:   int64(BlockSize + intKSz + intVSz),
+		offset: db.LastOffset(),
+	}
+	if kv.ExpiresIn > 0 {
+		newSegment.tstamp = int64(time.Now().Add(kv.ExpiresIn).UnixNano())
+	} else {
+		newSegment.tstamp = int64(time.Now().Add(KEY_EXPIRES_IN_DEFAULT).UnixNano())
 	}
 
-	// newSegment.offset = db.LastOffset() + newSegment.size
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	db.LimitDatafileToThreshold(int64(newSegment.size), &Options{})
@@ -489,6 +517,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		size:   newSegment.size,
 		path:   strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
 	}
+	// fmt.Println("off = ", kdValue.offset)
 	db.setKeyDir(string(kv.Key), kdValue)
 	return kv.Value, err
 }
@@ -499,7 +528,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 		return nil
 	}
 
-	path := fmt.Sprintf("%s/%s", db.dirPath, file.Name())
+	path := utils.JoinPaths(db.dirPath, file.Name())
 	db.activeDataFile = path
 	db.lastOffset = 0
 

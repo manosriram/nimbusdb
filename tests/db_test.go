@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/manosriram/nimbusdb"
@@ -13,13 +14,41 @@ import (
 
 var keys [][]byte
 var opts nimbusdb.Options
-var TestDir = "/Users/manosriram/nimbusdb"
-var TestPath = "/Users/manosriram/nimbusdb/test_data"
+
+const (
+	TestDir         = "/Users/manosriram/nimbusdb"
+	TestPath        = "/Users/manosriram/nimbusdb/test_data"
+	EXPIRY_DURATION = 1 * time.Second
+)
 
 func TestDbOpen(t *testing.T) {
 	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+}
+
+func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	kv := &nimbusdb.KeyValuePair{
+		Key:       []byte("testkey1"),
+		Value:     []byte("testvalue1"),
+		ExpiresIn: EXPIRY_DURATION,
+	}
+	v, err := d.Set(kv)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, v, []byte("testvalue1"))
+
+	time.Sleep(2 * time.Second)
+	va, err := d.Get(kv.Key)
+	assert.NotEqual(t, nil, err)
+	assert.NotEqual(t, kv.Value, va)
+
+	t.Cleanup(func() {
+		os.RemoveAll(TestDir)
+	})
 }
 
 func Test_InMemory_SetGet(t *testing.T) {
@@ -159,4 +188,5 @@ func Test_ConcurrentGet(t *testing.T) {
 	t.Cleanup(func() {
 		os.RemoveAll(TestDir)
 	})
+
 }

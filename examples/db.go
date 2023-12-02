@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/go/src/nimbusdb/test_data/"
+	DirPath = "/Users/manosriram/nimbusdb/test"
 )
 
 func main() {
-	d, _ := nimbusdb.Open(&nimbusdb.Options{})
+	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter text: ")
@@ -30,6 +30,7 @@ func main() {
 			kv := &nimbusdb.KeyValuePair{
 				Key:   []byte(key),
 				Value: []byte(value),
+				// ExpiresIn: 5 * time.Second,
 			}
 			_, err := d.Set(kv)
 			fmt.Println(err)

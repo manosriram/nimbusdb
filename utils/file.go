@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -13,10 +14,7 @@ import (
 func HasTimestampExpired(timestamp int64) bool {
 	tstamp := time.Unix(0, timestamp).UnixNano()
 	now := time.Now().UnixNano()
-	if tstamp < now {
-		return true
-	}
-	return false
+	return tstamp < now
 }
 
 func Int64ToByte(n int64) []byte {
@@ -62,4 +60,8 @@ func StringToInt(s []byte) (int, error) {
 
 func GetFilenameWithoutExtension(filename string) string {
 	return filename[strings.LastIndex(filename, "/")+1:]
+}
+
+func JoinPaths(pathA, pathB string) string {
+	return filepath.Join(pathA, pathB)
 }
