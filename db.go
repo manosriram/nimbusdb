@@ -3,9 +3,11 @@ package nimbusdb
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,8 +32,8 @@ const (
 	InactiveSegmentDataFileSuffix = ".idfile"
 	TempDataFilePattern           = "*.dfile"
 	TempInactiveDataFilePattern   = "*.idfile"
-	HomePath                      = "/Users/manosriram/go/src/nimbusdb" // TODO: refactor this
-	DatafileThreshold             = 5 * MB
+	DefaultDataDir                = "nimbusdb"
+	DatafileThreshold             = 200 * KB
 )
 
 const (
@@ -361,9 +363,8 @@ func Open(opts *Options) (*Db, error) {
 			return nil, err
 		}
 
-		dirPath = fmt.Sprintf("%s/%s", home, "nimbusdb")
+		dirPath = filepath.Join(home, DefaultDataDir)
 	}
-
 	db := NewDb(dirPath)
 	err := os.MkdirAll(dirPath, os.ModePerm)
 	if err != nil {
@@ -377,32 +378,30 @@ func Open(opts *Options) (*Db, error) {
 
 	// Empty path, starting new
 	if len(dir) == 0 {
-		// no files in path
-		// create an active segment file
 		err = db.CreateActiveDatafile(dirPath)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Found files in dir
-	for _, file := range dir {
+	filepath.WalkDir(dirPath, func(s string, file fs.DirEntry, e error) error {
 		if file.IsDir() {
-			continue
+			return nil
 		}
 
-		fileInfo, _ := file.Info()
-		if path.Ext(fileInfo.Name()) == ActiveSegmentDatafileSuffix {
-			db.activeDataFile = dirPath + "/" + fileInfo.Name()
+		filePath := filepath.Join(dirPath, file.Name())
+		if path.Ext(file.Name()) == ActiveSegmentDatafileSuffix {
+			db.activeDataFile = filePath
 			db.parseActiveSegmentFile(db.activeDataFile)
-		} else if path.Ext(fileInfo.Name()) == SegmentHintfileSuffix {
+		} else if path.Ext(file.Name()) == SegmentHintfileSuffix {
 			// TODO
-			continue
-		} else if path.Ext(fileInfo.Name()) == InactiveSegmentDataFileSuffix {
-			db.parseActiveSegmentFile(dirPath + file.Name())
+			return nil
+		} else if path.Ext(file.Name()) == InactiveSegmentDataFileSuffix {
+			db.parseActiveSegmentFile(filePath)
 		}
-	}
 
+		return nil
+	})
 	return db, nil
 }
 
@@ -445,7 +444,6 @@ func (db *Db) LimitDatafileToThreshold(add int64, opts *Options) {
 		if opts.IsMerge {
 			db.CreateInactiveDatafile(db.dirPath)
 			os.Remove(opts.MergeFilePath)
-			fmt.Println("removed ", opts.MergeFilePath)
 		} else {
 			db.CreateActiveDatafile(db.dirPath)
 		}
@@ -495,38 +493,42 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	return kv.Value, err
 }
 
-func (db *Db) Sync() error {
-	files, err := os.ReadDir(db.dirPath)
-	if err != nil {
-		return err
+func (db *Db) walk(s string, file fs.DirEntry, err error) error {
+	fmt.Printf("s = %s, d = %v, err = %v\n", s, file, err)
+	if path.Ext(file.Name()) != InactiveSegmentDataFileSuffix {
+		return nil
 	}
-	for _, file := range files {
-		if path.Ext(file.Name()) != InactiveSegmentDataFileSuffix {
-			continue
-		}
 
-		path := fmt.Sprintf("%s/%s", db.dirPath, file.Name())
-		db.activeDataFile = path
-		db.lastOffset = 0
+	path := fmt.Sprintf("%s/%s", db.dirPath, file.Name())
+	db.activeDataFile = path
+	db.lastOffset = 0
 
-		segments, _ := db.getActiveFileSegments(path)
-		if len(segments) == 0 {
-			err = os.Remove(path)
-			if err != nil {
-				return err
-			}
+	segments, _ := db.getActiveFileSegments(path)
+	if len(segments) == 0 {
+		err = os.Remove(path)
+		if err != nil {
+			return err
 		}
+	}
 
-		for _, segment := range segments {
-			db.LimitDatafileToThreshold(segment.size, &Options{
-				IsMerge:       true,
-				MergeFilePath: path,
-			})
-			err := db.WriteSegment(segment)
-			if err != nil {
-				return err
-			}
+	for _, segment := range segments {
+		db.LimitDatafileToThreshold(segment.size, &Options{
+			IsMerge:       true,
+			MergeFilePath: path,
+		})
+		err := db.WriteSegment(segment)
+		if err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func (db *Db) Sync() error {
+	err := filepath.WalkDir(db.dirPath, db.walk)
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 
@@ -12,15 +13,17 @@ import (
 
 var keys [][]byte
 var opts nimbusdb.Options
+var TestDir = "/Users/manosriram/nimbusdb"
+var TestPath = "/Users/manosriram/nimbusdb/test_data"
 
 func TestDbOpen(t *testing.T) {
-	d, err := nimbusdb.Open(&opts)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 }
 
 func Test_InMemory_SetGet(t *testing.T) {
-	d, err := nimbusdb.Open(&opts)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -38,7 +41,7 @@ func Test_InMemory_SetGet(t *testing.T) {
 }
 
 func Test_Set(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{})
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -52,7 +55,7 @@ func Test_Set(t *testing.T) {
 }
 
 func Test_Get(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{})
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -63,10 +66,13 @@ func Test_Get(t *testing.T) {
 	va, err := d.Get(kv.Key)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, kv.Value, va)
+	t.Cleanup(func() {
+		os.RemoveAll(TestDir)
+	})
 }
 
 func Test_StressSet(t *testing.T) {
-	d, err := nimbusdb.Open(&opts)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -75,7 +81,6 @@ func Test_StressSet(t *testing.T) {
 			Key:   []byte(uuid.NewString()),
 			Value: []byte("testvalue"),
 		}
-		// fmt.Println(string(kv.Key))
 		keys = append(keys, kv.Key)
 		v, err := d.Set(kv)
 		assert.Equal(t, err, nil)
@@ -84,12 +89,11 @@ func Test_StressSet(t *testing.T) {
 }
 
 func Test_StressGet(t *testing.T) {
-	d, err := nimbusdb.Open(&opts)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
 	for i := 0; i < 10000; i++ {
-		// fmt.Println(string(keys[i]))
 		kv := &nimbusdb.KeyValuePair{
 			Key:   keys[i],
 			Value: []byte("testvalue"),
@@ -98,13 +102,13 @@ func Test_StressGet(t *testing.T) {
 		assert.Equal(t, err, nil)
 		assert.Equal(t, v, kv.Value)
 	}
+	t.Cleanup(func() {
+		os.RemoveAll(TestDir)
+	})
 }
 
 func Test_ConcurrentSet(t *testing.T) {
-	// cmd := exec.Command("rm -rf ../test_data")
-	// cmd.Run()
-
-	d, err := nimbusdb.Open(&opts)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -126,11 +130,10 @@ func Test_ConcurrentSet(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	// assert.Equal(t, 100000+d.Count(), int64(numGoRoutines))
 }
 
 func Test_ConcurrentGet(t *testing.T) {
-	d, err := nimbusdb.Open(&opts)
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -153,4 +156,7 @@ func Test_ConcurrentGet(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+	t.Cleanup(func() {
+		os.RemoveAll(TestDir)
+	})
 }
