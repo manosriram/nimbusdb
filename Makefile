@@ -1,6 +1,9 @@
 db:
 	go run examples/db.go
 
+build:
+	go build -v
+
 clean:
 	rm -rf /Users/manosriram/nimbusdb/test/
 
