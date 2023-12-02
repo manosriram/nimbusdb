@@ -68,6 +68,5 @@ func JoinPaths(pathA, pathB string) string {
 
 func DbDir() string {
 	tmp, _ := os.MkdirTemp(".", "nimbusdb_temp")
-	fmt.Println("t = ", tmp)
 	return tmp
 }

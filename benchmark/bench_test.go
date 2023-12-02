@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	"github.com/manosriram/nimbusdb"
+	"github.com/manosriram/nimbusdb/utils"
 )
 
 func BenchmarkGetSet(b *testing.B) {
-	const (
-		DirPath = "/Users/manosriram/nimbusdb/test_data/"
-	)
-
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
+	opts := &nimbusdb.Options{
+		Path: utils.DbDir(),
+	}
+	d, err := nimbusdb.Open(opts)
 	if err != nil {
 		log.Fatal(err)
 	}

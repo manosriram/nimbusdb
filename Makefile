@@ -12,4 +12,4 @@ test:
 .PHONY: all test
 
 bench:
-	make test_clean && cd benchmark && go test -bench=. -benchmem
+	cd benchmark && go test -bench=. -benchmem
