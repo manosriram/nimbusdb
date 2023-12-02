@@ -14,7 +14,7 @@ const (
 )
 
 func main() {
-	d, _ := nimbusdb.Open(DirPath, true)
+	d, _ := nimbusdb.Open(&nimbusdb.Options{})
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter text: ")

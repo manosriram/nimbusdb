@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -57,4 +58,8 @@ func ReadFile(path string) ([]byte, error) {
 
 func StringToInt(s []byte) (int, error) {
 	return strconv.Atoi(fmt.Sprintf("%s", s))
+}
+
+func GetFilenameWithoutExtension(filename string) string {
+	return filename[strings.LastIndex(filename, "/")+1:]
 }

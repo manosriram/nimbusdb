@@ -2,10 +2,10 @@ db:
 	go run examples/db.go
 
 clean:
-	rm -f data/*
+	rm -rf /Users/manosriram/nimbusdb
 
 test_clean:
-	rm -f test_data/* concurrent_test_data/*
+	rm -rf /Users/manosriram/nimbusdb
 
 test:
 	make test_clean && go test ./tests -v
