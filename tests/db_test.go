@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/manosriram/nimbusdb"
@@ -11,11 +10,11 @@ import (
 var keys [][]byte
 var opts nimbusdb.Options
 
-// func TestDbOpen(t *testing.T) {
-// d, err := nimbusdb.Open(&opts)
-// assert.Equal(t, err, nil)
-// assert.NotEqual(t, d, nil)
-// }
+func TestDbOpen(t *testing.T) {
+	d, err := nimbusdb.Open(&opts)
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+}
 
 // func Test_InMemory_SetGet(t *testing.T) {
 // d, err := nimbusdb.Open(&opts)
@@ -36,7 +35,7 @@ var opts nimbusdb.Options
 // }
 
 func Test_Set(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: "tdata"})
+	d, err := nimbusdb.Open(&nimbusdb.Options{})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -50,7 +49,7 @@ func Test_Set(t *testing.T) {
 }
 
 func Test_Get(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: "tdata"})
+	d, err := nimbusdb.Open(&nimbusdb.Options{})
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -58,7 +57,6 @@ func Test_Get(t *testing.T) {
 		Key:   []byte("testkey"),
 		Value: []byte("testvalue"),
 	}
-	fmt.Println("all = ", d.All())
 	va, err := d.Get(kv.Key)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, kv.Value, va)

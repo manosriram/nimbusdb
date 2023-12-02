@@ -3,9 +3,11 @@ db:
 
 clean:
 	rm -rf /Users/manosriram/nimbusdb
+	rm -rf /Users/manosriram/tdata
 
 test_clean:
 	rm -rf /Users/manosriram/nimbusdb
+	rm -rf /Users/manosriram/tdata
 
 test:
 	make test_clean && go test ./tests -v

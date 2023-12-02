@@ -292,7 +292,6 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 		}
 
 		// segment.fileID = strings.Split(path.Base(filePath), ".")[0]
-		fmt.Println(segment.offset, segment.tstamp)
 		segment.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 		hasTimestampExpired := utils.HasTimestampExpired(segment.tstamp)
 		if !hasTimestampExpired {
@@ -395,6 +394,7 @@ func Open(opts *Options) (*Db, error) {
 		fileInfo, _ := file.Info()
 		if path.Ext(fileInfo.Name()) == ActiveSegmentDatafileSuffix {
 			db.activeDataFile = dirPath + "/" + fileInfo.Name()
+			fmt.Println("ac = ", db.activeDataFile)
 			db.parseActiveSegmentFile(db.activeDataFile)
 		} else if path.Ext(fileInfo.Name()) == SegmentHintfileSuffix {
 			// TODO
@@ -477,9 +477,9 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		k:      encode(kv.Key),
 		v:      encode(kv.Value),
 		size:   int64(BlockSize + intKSz + intVSz),
-		offset: db.LastOffset(),
 	}
 
+	// newSegment.offset = db.LastOffset() + newSegment.size
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	db.LimitDatafileToThreshold(int64(newSegment.size), &Options{})
