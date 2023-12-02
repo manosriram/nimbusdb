@@ -65,3 +65,9 @@ func GetFilenameWithoutExtension(filename string) string {
 func JoinPaths(pathA, pathB string) string {
 	return filepath.Join(pathA, pathB)
 }
+
+func DbDir() string {
+	tmp, _ := os.MkdirTemp(".", "nimbusdb_temp")
+	fmt.Println("t = ", tmp)
+	return tmp
+}

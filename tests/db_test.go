@@ -9,26 +9,27 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/manosriram/nimbusdb"
+	"github.com/manosriram/nimbusdb/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 var keys [][]byte
-var opts nimbusdb.Options
+var opts = &nimbusdb.Options{
+	Path: utils.DbDir(),
+}
 
 const (
-	TestDir         = "/Users/manosriram/nimbusdb"
-	TestPath        = "/Users/manosriram/nimbusdb/test_data"
 	EXPIRY_DURATION = 1 * time.Second
 )
 
 func TestDbOpen(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 }
 
 func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -47,12 +48,12 @@ func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
 	assert.NotEqual(t, kv.Value, va)
 
 	t.Cleanup(func() {
-		os.RemoveAll(TestDir)
+		os.RemoveAll(opts.Path)
 	})
 }
 
 func Test_InMemory_SetGet(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -70,7 +71,7 @@ func Test_InMemory_SetGet(t *testing.T) {
 }
 
 func Test_Set(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -84,7 +85,7 @@ func Test_Set(t *testing.T) {
 }
 
 func Test_Get(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -96,12 +97,12 @@ func Test_Get(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, kv.Value, va)
 	t.Cleanup(func() {
-		os.RemoveAll(TestDir)
+		os.RemoveAll(opts.Path)
 	})
 }
 
 func Test_StressSet(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -118,7 +119,7 @@ func Test_StressSet(t *testing.T) {
 }
 
 func Test_StressGet(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -132,12 +133,12 @@ func Test_StressGet(t *testing.T) {
 		assert.Equal(t, v, kv.Value)
 	}
 	t.Cleanup(func() {
-		os.RemoveAll(TestDir)
+		os.RemoveAll(opts.Path)
 	})
 }
 
 func Test_ConcurrentSet(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -162,7 +163,7 @@ func Test_ConcurrentSet(t *testing.T) {
 }
 
 func Test_ConcurrentGet(t *testing.T) {
-	d, err := nimbusdb.Open(&nimbusdb.Options{Path: TestPath})
+	d, err := nimbusdb.Open(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -186,7 +187,7 @@ func Test_ConcurrentGet(t *testing.T) {
 	}
 	wg.Wait()
 	t.Cleanup(func() {
-		os.RemoveAll(TestDir)
+		os.RemoveAll(opts.Path)
 	})
 
 }

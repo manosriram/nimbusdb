@@ -310,12 +310,9 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 			return err
 		}
 
-		// segment.fileID = strings.Split(path.Base(filePath), ".")[0]
 		segment.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 		hasTimestampExpired := utils.HasTimestampExpired(segment.tstamp)
 		if !hasTimestampExpired {
-			// fileName := utils.GetFilenameWithoutExtension(filePath)
-
 			fileName := strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 			kdValue := KeyDirValue{
 				offset: segment.offset,
@@ -517,13 +514,11 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		size:   newSegment.size,
 		path:   strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
 	}
-	// fmt.Println("off = ", kdValue.offset)
 	db.setKeyDir(string(kv.Key), kdValue)
 	return kv.Value, err
 }
 
 func (db *Db) walk(s string, file fs.DirEntry, err error) error {
-	fmt.Printf("s = %s, d = %v, err = %v\n", s, file, err)
 	if path.Ext(file.Name()) != InactiveSegmentDataFileSuffix {
 		return nil
 	}
