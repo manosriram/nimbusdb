@@ -110,14 +110,15 @@ type KeyDirValue struct {
 }
 
 type Db struct {
-	mu             sync.Mutex
-	dirPath        string
-	dataFilePath   string
-	activeDataFile string
-	lastOffset     int64
-	keyDir         map[string]KeyDirValue
-	isTest         bool
-	opts           *Options
+	mu                    sync.Mutex
+	dirPath               string
+	dataFilePath          string
+	activeDataFilePointer *os.File
+	activeDataFile        string
+	lastOffset            int64
+	keyDir                map[string]KeyDirValue
+	isTest                bool
+	opts                  *Options
 }
 
 // TODO: use dirPath here
@@ -133,6 +134,20 @@ func NewDb(dirPath string) *Db {
 
 func (db *Db) LastOffset() int64 {
 	return db.lastOffset
+}
+
+func (db *Db) getActiveDataFilePointer() *os.File {
+	return db.activeDataFilePointer
+}
+
+func (db *Db) setActiveDataFile(activeDataFile string) error {
+	f, err := os.OpenFile(activeDataFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	db.activeDataFile = activeDataFile
+	db.activeDataFilePointer = f
+	return nil
 }
 
 func (db *Db) setKeyDir(key string, kdValue KeyDirValue) interface{} {
@@ -218,10 +233,12 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 
 func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
 	// TODO: improve dfile and idfile recognizing
-	f, err := os.Open(fmt.Sprintf("%s/%s.dfile", db.dirPath, kdValue.path))
+	f, err := os.OpenFile(fmt.Sprintf("%s/%s.dfile", db.dirPath, kdValue.path), os.O_RDONLY, 0644)
 	if err != nil {
-		f, _ = os.Open(fmt.Sprintf("%s/%s.idfile", db.dirPath, kdValue.path))
+		f, _ = os.OpenFile(fmt.Sprintf("%s/%s.idfile", db.dirPath, kdValue.path), os.O_RDONLY, 0644)
 	}
+	defer f.Close()
+
 	data := make([]byte, kdValue.size)
 	f.Seek(kdValue.offset, io.SeekCurrent)
 	f.Read(data)
@@ -334,7 +351,7 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 
 func (db *Db) CreateInactiveDatafile(dirPath string) error {
 	file, err := os.CreateTemp(dirPath, TempInactiveDataFilePattern)
-	db.activeDataFile = file.Name()
+	db.setActiveDataFile(file.Name())
 	db.lastOffset = 0
 	if err != nil {
 		return err
@@ -361,7 +378,7 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 	}
 
 	file, err := os.CreateTemp(dirPath, TempDataFilePattern)
-	db.activeDataFile = file.Name()
+	db.setActiveDataFile(file.Name())
 	db.lastOffset = 0
 	if err != nil {
 		return err
@@ -370,7 +387,8 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 }
 
 func (db *Db) Close(opts *Options) error {
-	return nil
+	err := db.activeDataFilePointer.Close()
+	return err
 }
 
 func Open(opts *Options) (*Db, error) {
@@ -409,7 +427,7 @@ func Open(opts *Options) (*Db, error) {
 
 		filePath := utils.JoinPaths(dirPath, file.Name())
 		if path.Ext(file.Name()) == ActiveSegmentDatafileSuffix {
-			db.activeDataFile = filePath
+			db.setActiveDataFile(filePath)
 			db.parseActiveSegmentFile(db.activeDataFile)
 		} else if path.Ext(file.Name()) == SegmentHintfileSuffix {
 			// TODO
@@ -454,8 +472,7 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 func (db *Db) LimitDatafileToThreshold(add int64, opts *Options) {
 	var sz os.FileInfo
 	var err error
-	// fmt.Println(opts.mergeFilePath, db.activeDataFile, db.dirPath)
-	sz, err = os.Stat(db.activeDataFile)
+	sz, err = db.getActiveDataFilePointer().Stat()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -524,7 +541,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	}
 
 	path := utils.JoinPaths(db.dirPath, file.Name())
-	db.activeDataFile = path
+	db.setActiveDataFile(path)
 	db.lastOffset = 0
 
 	segments, _ := db.getActiveFileSegments(path)

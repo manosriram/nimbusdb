@@ -3,3 +3,4 @@ test_data
 concurrent_test_data
 .DS_Store
 .vscode
+tests/nimbusdb*

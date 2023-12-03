@@ -5,10 +5,10 @@ build:
 	go build -v
 
 clean:
-	rm -rf /Users/manosriram/nimbusdb/test/
+	rm -rf tests/nimbusdb*
 
 test_clean:
-	rm -rf /Users/manosriram/nimbusdb/test_data/
+	rm -rf tests/nimbusdb*
 
 test:
 	go test ./tests -v
