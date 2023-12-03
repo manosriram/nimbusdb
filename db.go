@@ -216,13 +216,13 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	intVsz := utils.ByteToInt64(vsz)
 
 	if int(offset+ValueSizeOffset+intKsz) > len(data) {
-		return nil, fmt.Errorf(OFFSET_EXCEEDED_FILE_SIZE)
+		return nil, errors.New(OFFSET_EXCEEDED_FILE_SIZE)
 	}
 	// get key
 	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+intKsz]
 
 	if int(offset+ValueSizeOffset+intKsz+intVsz) > len(data) {
-		return nil, fmt.Errorf(OFFSET_EXCEEDED_FILE_SIZE)
+		return nil, errors.New(OFFSET_EXCEEDED_FILE_SIZE)
 	}
 	// get value
 	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
