@@ -5,10 +5,7 @@ build:
 	go build -v
 
 clean:
-	rm -rf tests/nimbusdb*
-
-test_clean:
-	rm -rf tests/nimbusdb*
+	rm -rf tests/nimbusdb* benchmark/nimbusdb*
 
 test:
 	go test ./tests -v

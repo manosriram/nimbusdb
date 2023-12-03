@@ -24,12 +24,14 @@ const (
 
 func TestDbOpen(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 }
 
 func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -54,6 +56,7 @@ func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
 
 func Test_InMemory_SetGet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -72,6 +75,7 @@ func Test_InMemory_SetGet(t *testing.T) {
 
 func Test_Set(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -86,6 +90,7 @@ func Test_Set(t *testing.T) {
 
 func Test_Get(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -103,6 +108,7 @@ func Test_Get(t *testing.T) {
 
 func Test_StressSet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -120,6 +126,7 @@ func Test_StressSet(t *testing.T) {
 
 func Test_StressGet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -139,6 +146,7 @@ func Test_StressGet(t *testing.T) {
 
 func Test_ConcurrentSet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
@@ -164,6 +172,7 @@ func Test_ConcurrentSet(t *testing.T) {
 
 func Test_ConcurrentGet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 

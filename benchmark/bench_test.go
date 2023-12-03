@@ -14,6 +14,7 @@ func BenchmarkGetSet(b *testing.B) {
 		Path: utils.DbDir(),
 	}
 	d, err := nimbusdb.Open(opts)
+	defer d.Close(opts)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -49,8 +49,10 @@ const (
 )
 
 const (
-	KEY_EXPIRES_IN_DEFAULT = 24 * time.Hour
-	KEY_NOT_FOUND          = "key expired or does not exist"
+	KEY_EXPIRES_IN_DEFAULT    = 24 * time.Hour
+	KEY_NOT_FOUND             = "key expired or does not exist"
+	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"
+	OFFSET_EXCEEDED_FILE_SIZE = "offset exceeded file size"
 )
 
 type Segment struct {
@@ -62,12 +64,6 @@ type Segment struct {
 	vsz    int32
 	k      []byte
 	v      []byte
-}
-
-type Options struct {
-	IsMerge       bool
-	MergeFilePath string
-	Path          string
 }
 
 func (s *Segment) BlockSize() int {
@@ -97,6 +93,12 @@ func (s *Segment) ToByte() []byte {
 	return segmentInBytes
 }
 
+type Options struct {
+	IsMerge       bool
+	MergeFilePath string
+	Path          string
+}
+
 type KeyValuePair struct {
 	Key       []byte
 	Value     interface{}
@@ -121,7 +123,6 @@ type Db struct {
 	opts                  *Options
 }
 
-// TODO: use dirPath here
 func NewDb(dirPath string) *Db {
 	keyDir := make(map[string]KeyDirValue, 0)
 	db := &Db{
@@ -136,11 +137,19 @@ func (db *Db) LastOffset() int64 {
 	return db.lastOffset
 }
 
-func (db *Db) getActiveDataFilePointer() *os.File {
-	return db.activeDataFilePointer
+func (db *Db) getActiveDataFilePointer() (*os.File, error) {
+	if db.activeDataFilePointer == nil {
+		return nil, errors.New(NO_ACTIVE_FILE_OPENED)
+	}
+	return db.activeDataFilePointer, nil
 }
 
 func (db *Db) setActiveDataFile(activeDataFile string) error {
+	err := db.Close(&Options{}) // close existing active datafile
+	if err != nil {
+		return err
+	}
+
 	f, err := os.OpenFile(activeDataFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return err
@@ -188,7 +197,7 @@ func (db *Db) getKeyDir(key string) (*Segment, error) {
 func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	// get timestamp
 	if int(offset+BlockSize) > len(data) {
-		return nil, fmt.Errorf("exceeded data array length")
+		return nil, errors.New(OFFSET_EXCEEDED_FILE_SIZE)
 	}
 	tstamp := data[offset : offset+TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
@@ -207,13 +216,13 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	intVsz := utils.ByteToInt64(vsz)
 
 	if int(offset+ValueSizeOffset+intKsz) > len(data) {
-		return nil, fmt.Errorf("exceeded data array length")
+		return nil, fmt.Errorf(OFFSET_EXCEEDED_FILE_SIZE)
 	}
 	// get key
 	k := data[offset+ValueSizeOffset : offset+ValueSizeOffset+intKsz]
 
 	if int(offset+ValueSizeOffset+intKsz+intVsz) > len(data) {
-		return nil, fmt.Errorf("exceeded data array length")
+		return nil, fmt.Errorf(OFFSET_EXCEEDED_FILE_SIZE)
 	}
 	// get value
 	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
@@ -289,7 +298,6 @@ func (db *Db) getActiveFileSegments(filePath string) ([]*Segment, error) {
 			return nil, err
 		}
 
-		// segment.fileID = strings.Split(path.Base(filePath), ".")[0]
 		segment.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 		hasTimestampExpired := utils.HasTimestampExpired(segment.tstamp)
 		if !hasTimestampExpired {
@@ -387,8 +395,11 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 }
 
 func (db *Db) Close(opts *Options) error {
-	err := db.activeDataFilePointer.Close()
-	return err
+	if db.activeDataFilePointer != nil {
+		err := db.activeDataFilePointer.Close()
+		return err
+	}
+	return nil
 }
 
 func Open(opts *Options) (*Db, error) {
@@ -472,7 +483,8 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 func (db *Db) LimitDatafileToThreshold(add int64, opts *Options) {
 	var sz os.FileInfo
 	var err error
-	sz, err = db.getActiveDataFilePointer().Stat()
+	f, err := db.getActiveDataFilePointer()
+	sz, err = f.Stat()
 	if err != nil {
 		log.Fatal(err)
 	}
