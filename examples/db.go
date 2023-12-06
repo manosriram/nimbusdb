@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/nimbusdb/test"
+	DirPath = "/Users/manosriram/nimbusdb/bench/"
 )
 
 func main() {
@@ -55,10 +55,8 @@ func main() {
 			// kdValue := nimbusdb.KeyDirValue{
 			// offset: 31,
 			// }
-			// s := d.SeekOffsetFromDataFile(31)
+			// s := d.seekOffsetFromDataFile (31)
 			// fmt.Println("kv = ", string(s.Key()), string(s.Value()))
-		} else if text == "size" {
-			fmt.Println(d.Count())
 		} else if text == "stat" {
 			d.CreateActiveDatafile(DirPath)
 		} else if text == "sync" {
