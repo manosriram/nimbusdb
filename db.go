@@ -1,7 +1,6 @@
 package nimbusdb
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -115,15 +114,6 @@ type KeyDirValue struct {
 	path   string
 }
 
-type item struct {
-	key []byte
-	v   KeyDirValue
-}
-
-func (it item) Less(i btree.Item) bool {
-	return bytes.Compare(it.key, i.(*item).key) < 0
-}
-
 type Db struct {
 	mu                    sync.Mutex
 	dirPath               string
@@ -181,21 +171,16 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) interface{} {
 		return nil
 	}
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
-	// db.keyDir.Store(key, kdValue)
 	db.keyDir.Set(key, kdValue)
 
 	return kdValue
-	// v, _ := db.keyDir.Load(key)
-	// return v
 }
 
 func (db *Db) getKeyDir(key []byte) (*Segment, error) {
-	// x, ok := db.keyDir.Load(key)
 	x := db.keyDir.Get(key)
 	if x == nil {
 		return nil, errors.New(KEY_NOT_FOUND)
 	}
-	// x := it.(*item).v
 
 	v, err := db.seekOffsetFromDataFile(*x)
 	if err != nil {
@@ -208,7 +193,6 @@ func (db *Db) getKeyDir(key []byte) (*Segment, error) {
 	}
 	hasTimestampExpired := utils.HasTimestampExpired(tstampString)
 	if hasTimestampExpired {
-		// db.keyDir.Delete(key)
 		db.keyDir.Delete(key)
 		return nil, errors.New(KEY_NOT_FOUND)
 	}

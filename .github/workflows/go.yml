@@ -23,8 +23,8 @@ jobs:
     - name: Build
       run: go build -v
 
-    - name: Run Test
-      run: make test
+    - name: Run Test with race checks
+      run: make testrace
 
     - name: Run Benchmark Test
       run: make bench

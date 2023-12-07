@@ -11,5 +11,8 @@ test:
 	go test ./tests -v
 .PHONY: all test
 
+testrace:
+	go test ./tests -v --race
+
 bench:
 	cd benchmark && go test -bench=. -benchmem

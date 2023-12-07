@@ -1,6 +1,7 @@
 package nimbusdb
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/google/btree"
@@ -9,6 +10,15 @@ import (
 type BTree struct {
 	tree *btree.BTree
 	mu   sync.RWMutex
+}
+
+type item struct {
+	key []byte
+	v   KeyDirValue
+}
+
+func (it item) Less(i btree.Item) bool {
+	return bytes.Compare(it.key, i.(*item).key) < 0
 }
 
 func (b *BTree) Get(key []byte) *KeyDirValue {
