@@ -34,8 +34,12 @@ func main() {
 			}
 			_, err := d.Set(kv)
 			fmt.Println(err)
+		} else if text == "delete" {
+			key, _ := reader.ReadString('\n')
+			key = strings.TrimSpace(key)
+			d.Delete([]byte(key))
 		} else if text == "all" {
-			d.All()
+			// d.All()
 		} else if text == "exit" {
 			os.Exit(1)
 		} else if text == "get" {

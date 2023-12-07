@@ -5,3 +5,4 @@ concurrent_test_data
 .vscode
 tests/nimbusdb*
 benchmark/nimbusdb*
+gcreport.txt
