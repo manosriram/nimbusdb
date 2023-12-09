@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/nimbusdb/bench/"
+	DirPath = "/Users/manosriram/nimbusdb/test_data"
 )
 
 func main() {
@@ -39,7 +39,10 @@ func main() {
 			key = strings.TrimSpace(key)
 			d.Delete([]byte(key))
 		} else if text == "all" {
-			// d.All()
+			pairs := d.All()
+			for i, pair := range pairs {
+				fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.ExpiresIn)
+			}
 		} else if text == "exit" {
 			os.Exit(1)
 		} else if text == "get" {

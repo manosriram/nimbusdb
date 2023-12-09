@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/google/btree"
+	"github.com/manosriram/nimbusdb/utils"
 )
 
 type BTree struct {
@@ -42,6 +43,8 @@ func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
 }
 
 func (b *BTree) Delete(key []byte) *KeyValuePair {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	i := b.tree.Delete(&item{key: key})
 	if i != nil {
 		x := i.(*item)
@@ -51,4 +54,17 @@ func (b *BTree) Delete(key []byte) *KeyValuePair {
 		}
 	}
 	return nil
+}
+
+func (b *BTree) List() []*KeyValuePair {
+	var pairs []*KeyValuePair
+	b.tree.Ascend(func(it btree.Item) bool {
+		pairs = append(pairs, &KeyValuePair{
+			Key:       it.(*item).key,
+			Value:     it.(*item).v,
+			ExpiresIn: utils.TimeUntilUnixNano(it.(*item).v.tstamp),
+		})
+		return true
+	})
+	return pairs
 }

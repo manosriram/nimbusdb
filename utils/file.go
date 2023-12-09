@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+func TimeUntilUnixNano(tstamp int64) time.Duration {
+	return time.Until(time.Unix(0, tstamp))
+}
+
 func HasTimestampExpired(timestamp int64) bool {
 	tstamp := time.Unix(0, timestamp).UnixNano()
 	now := time.Now().UnixNano()
