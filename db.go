@@ -150,7 +150,7 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	if x == nil {
 		return nil, errors.New(KEY_NOT_FOUND)
 	}
-	fmt.Println(*&x.blockNumber)
+	// fmt.Println(*&x.blockNumber)
 
 	v, err := db.seekOffsetFromDataFile(*x)
 	if err != nil {

@@ -36,9 +36,9 @@ func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
 	assert.NotEqual(t, d, nil)
 
 	kv := &nimbusdb.KeyValuePair{
-		Key:       []byte("testkey1"),
-		Value:     []byte("testvalue1"),
-		ExpiresIn: EXPIRY_DURATION,
+		Key:   []byte("testkey1"),
+		Value: []byte("testvalue1"),
+		Ttl:   EXPIRY_DURATION,
 	}
 	v, err := d.Set(kv)
 	assert.Equal(t, err, nil)
