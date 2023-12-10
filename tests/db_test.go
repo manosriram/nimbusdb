@@ -128,6 +128,49 @@ func Test_Get(t *testing.T) {
 	va, err := d.Get(kv.Key)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, kv.Value, va)
+}
+
+func Test_Delete(t *testing.T) {
+	d, err := nimbusdb.Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	kv := &nimbusdb.KeyValuePair{
+		Key:   []byte("testkey"),
+		Value: []byte("testvalue"),
+	}
+	err = d.Delete(kv.Key)
+	assert.Equal(t, nil, err)
+
+	t.Cleanup(func() {
+		os.RemoveAll(opts.Path)
+	})
+}
+
+func Test_InMemory_Delete(t *testing.T) {
+	d, err := nimbusdb.Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	kv := &nimbusdb.KeyValuePair{
+		Key:   []byte("testkey_for_delete"),
+		Value: []byte("testvalue1"),
+	}
+	v, err := d.Set(kv)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, v, []byte("testvalue1"))
+
+	va, err := d.Get(kv.Key)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, kv.Value, va)
+
+	err = d.Delete(kv.Key)
+	assert.Equal(t, nil, err)
+
+	va, err = d.Get(kv.Key)
+	// assert.Equal(t, kv.Value, nil)
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
 	})
@@ -209,7 +252,6 @@ func Test_ConcurrentGet(t *testing.T) {
 	wg.Add(numGoRoutines)
 
 	for i := 0; i < numGoRoutines; i++ {
-		// fmt.Println("getting ", i)
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(fmt.Sprintf("%d", i)),
 			Value: []byte(fmt.Sprintf("testvalue%d", i)),
@@ -222,8 +264,32 @@ func Test_ConcurrentGet(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	t.Cleanup(func() {
-		os.RemoveAll(opts.Path)
-	})
+}
 
+func Test_ConcurrentDelete(t *testing.T) {
+	d, err := nimbusdb.Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	numGoRoutines := 10000
+
+	wg := sync.WaitGroup{}
+	wg.Add(numGoRoutines)
+
+	for i := 0; i < numGoRoutines; i++ {
+		kv := &nimbusdb.KeyValuePair{
+			Key:   []byte(fmt.Sprintf("%d", i)),
+			Value: []byte(fmt.Sprintf("testvalue%d", i)),
+		}
+		go func() {
+			defer wg.Done()
+			err := d.Delete(kv.Key)
+			assert.Equal(t, nil, err)
+
+			_, err = d.Get(kv.Key)
+			assert.Equal(t, nimbusdb.KEY_NOT_FOUND, err.Error())
+		}()
+	}
+	wg.Wait()
 }

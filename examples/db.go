@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/nimbusdb/bench/"
+	DirPath = "/Users/manosriram/nimbusdb/test_data"
 )
 
 func main() {
 	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
 	for {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter text: ")
+		fmt.Printf("> ")
 		text, _ := reader.ReadString('\n')
 
 		text = strings.TrimSpace(text)
@@ -34,8 +34,15 @@ func main() {
 			}
 			_, err := d.Set(kv)
 			fmt.Println(err)
+		} else if text == "delete" {
+			key, _ := reader.ReadString('\n')
+			key = strings.TrimSpace(key)
+			d.Delete([]byte(key))
 		} else if text == "all" {
-			d.All()
+			pairs := d.All()
+			for i, pair := range pairs {
+				fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.ExpiresIn)
+			}
 		} else if text == "exit" {
 			os.Exit(1)
 		} else if text == "get" {
@@ -49,14 +56,6 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-		} else if text == "seek" {
-			// offset, _ := reader.ReadString('\n')
-			// o, _ := strconv.Atoi(fmt.Sprintf("%d", offset))
-			// kdValue := nimbusdb.KeyDirValue{
-			// offset: 31,
-			// }
-			// s := d.seekOffsetFromDataFile (31)
-			// fmt.Println("kv = ", string(s.Key()), string(s.Value()))
 		} else if text == "stat" {
 			d.CreateActiveDatafile(DirPath)
 		} else if text == "sync" {

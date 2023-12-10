@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"bytes"
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,36 +11,53 @@ import (
 	"time"
 )
 
+func TimeUntilUnixNano(tstamp int64) time.Duration {
+	return time.Until(time.Unix(0, tstamp))
+}
+
 func HasTimestampExpired(timestamp int64) bool {
 	tstamp := time.Unix(0, timestamp).UnixNano()
 	now := time.Now().UnixNano()
 	return tstamp < now
 }
 
-func Int64ToByte(n int64) []byte {
-	data := uint64(n)
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
+func Int32ToByte(n int32) []byte {
+	b := make([]byte, binary.MaxVarintLen32)
+	binary.LittleEndian.PutUint32(b, uint32(n))
+	return b
+}
 
-	enc.Encode(data)
-	return buf.Bytes()
+func Int64ToByte(n int64) []byte {
+	b := make([]byte, binary.MaxVarintLen64)
+	binary.LittleEndian.PutUint64(b, uint64(n))
+	return b
+}
+
+func ByteToInt32(b []byte) int32 {
+	if lesser := len(b) < binary.MaxVarintLen32; lesser {
+		b = b[:cap(b)]
+	}
+	return int32(binary.LittleEndian.Uint32(b))
 }
 
 func ByteToInt64(b []byte) int64 {
-	var x uint64
-	debuf := bytes.NewBuffer(b)
-	dec := gob.NewDecoder(debuf)
-	dec.Decode(&x)
-
-	return int64(x)
+	if lesser := len(b) < binary.MaxVarintLen64; lesser {
+		b = b[:cap(b)]
+	}
+	return int64(binary.LittleEndian.Uint64(b))
 }
 
 func Encode(d interface{}) []byte {
 	switch d.(type) {
 	case string:
 		return []byte(fmt.Sprintf("%s", d))
-	case int, uint32, uint64, int32, int64:
-		return []byte(fmt.Sprintf("%d", d))
+	case int64:
+		return Int64ToByte(d.(int64))
+	case int32:
+		return Int32ToByte(d.(int32))
+	case int:
+		z := d.(int)
+		return Int32ToByte(int32(z))
 	default:
 		return d.([]byte)
 	}
@@ -69,4 +86,11 @@ func JoinPaths(pathA, pathB string) string {
 func DbDir() string {
 	tmp, _ := os.MkdirTemp(".", "nimbusdb_temp")
 	return tmp
+}
+
+func Recover() {
+	if err := recover(); err != nil {
+		log.Printf("panic occurred: %v\n", err)
+		os.Exit(0)
+	}
 }
