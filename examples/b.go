@@ -1,29 +1,35 @@
 // package main
 
 // import (
-// "bytes"
-// "encoding/gob"
 // "fmt"
-// "os"
+
+// "github.com/manosriram/nimbusdb/utils"
 // )
 
 // func main() {
-// f, _ := os.Create("a.dfile")
-// fmt.Println(f)
-
 // // int to buffer
-// data := uint64(1234567890)
-// var buf bytes.Buffer
-// enc := gob.NewEncoder(&buf)
+// // d := int64(1234567890)
 
-// enc.Encode(data)
-// fmt.Println(buf.Bytes())
+// // x := utils.Int64ToByte(d)
+// // fmt.Println(x)
 
-// // buffer to int
-// var x uint64
-// debuf := bytes.NewBuffer(buf.Bytes())
-// dec := gob.NewDecoder(debuf)
-// dec.Decode(&x)
+// // y := utils.ByteToInt64(x)
+// // fmt.Println(y)
 
-// fmt.Println(x)
+// // xx := utils.Int64ToByte2(d)
+// // fmt.Println(xx)
+
+// // yy := utils.ByteToInt642(xx)
+// // fmt.Println(yy)
+
+// // t := int64(time.Now().Add(1 * time.Hour).UnixNano())
+// // z := []byte{1, 160, 185, 159, 23}
+// tst := []byte{101, 115, 116, 118, 97, 108, 117, 101, 49, 48}
+// fmt.Println(utils.ByteToInt64(tst))
+// fmt.Println(utils.Int32ToByte(int32(99999)))
+// fmt.Println([]byte(fmt.Sprintf("%d", 100000)))
+// // fmt.Println(len(utils.Int32ToByte(int32(123123))))
+// // fmt.Println(len(utils.Int64ToByte(int64(123123))))
+// // fmt.Println(utils.Int32ToByte(int32(11234)))
+
 // }

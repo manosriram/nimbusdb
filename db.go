@@ -41,23 +41,27 @@ const (
 
 const (
 	DeleteFlagOffset int64 = 1
-	TstampOffset           = 13
-	KeySizeOffset          = 17
-	ValueSizeOffset        = 21
-	BlockSize              = 12 + 4 + 4 + 1 // tstamp + ksize + vsize
+	TstampOffset           = 11
+	KeySizeOffset          = 21
+	ValueSizeOffset        = 31
+	BlockSize              = 1 + 10 + 10 + 10
 	ChunkSize              = 50 * KB
 	BTreeDegree            = 10
 )
 const (
-	TotalBlockSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + BlockSize
+	TotalBlockSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + DeleteFlagOffset + BlockSize
 )
 
 const (
-	KEY_EXPIRES_IN_DEFAULT    = 24 * time.Hour
+	KEY_EXPIRES_IN_DEFAULT = 24 * time.Hour
+
 	KEY_NOT_FOUND             = "key expired or does not exist"
 	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"
 	OFFSET_EXCEEDED_FILE_SIZE = "offset exceeded file size"
-	DELETED_FLAG_BYTE_VALUE   = 49
+
+	DELETED_FLAG_BYTE_VALUE  = 49
+	DELETED_FLAG_SET_VALUE   = "1"
+	DELETED_FLAG_UNSET_VALUE = '0'
 )
 
 type Segment struct {
@@ -66,8 +70,8 @@ type Segment struct {
 	offset  int64
 	size    int64
 	tstamp  int64
-	ksz     int32
-	vsz     int32
+	ksz     int64
+	vsz     int64
 	k       []byte
 	v       []byte
 }
@@ -90,8 +94,8 @@ func (s *Segment) ToByte() []byte {
 	buf := make([]byte, 0)
 	buf = append(buf, s.deleted)
 	buf = append(buf, utils.Int64ToByte(s.tstamp)...)
-	buf = append(buf, utils.Int64ToByte(int64(s.ksz))...)
-	buf = append(buf, utils.Int64ToByte(int64(s.vsz))...)
+	buf = append(buf, utils.Int64ToByte(s.ksz)...)
+	buf = append(buf, utils.Int64ToByte(s.vsz)...)
 
 	segmentInBytes = append(segmentInBytes, buf...)
 	segmentInBytes = append(segmentInBytes, s.k...)
@@ -205,7 +209,8 @@ func (db *Db) getKeyDir(key []byte) (*Segment, error) {
 }
 
 func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
-	// get timestamp
+	defer utils.Recover()
+
 	if int(offset+BlockSize) > len(data) {
 		return nil, errors.New(OFFSET_EXCEEDED_FILE_SIZE)
 	}
@@ -244,8 +249,8 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 	x := &Segment{
 		deleted: deleted,
 		tstamp:  int64(tstamp64Bit),
-		ksz:     int32(intKsz),
-		vsz:     int32(intVsz),
+		ksz:     int64(intKsz),
+		vsz:     int64(intVsz),
 		k:       k,
 		v:       v,
 		offset:  offset,
@@ -255,10 +260,17 @@ func getSegmentFromOffset(offset int64, data []byte) (*Segment, error) {
 }
 
 func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
+	defer utils.Recover()
+
 	// TODO: improve dfile and idfile recognizing
-	f, err := os.OpenFile(fmt.Sprintf("%s/%s.idfile", db.dirPath, kdValue.path), os.O_RDONLY, 0644)
+	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", kdValue.path))
+	f, err := os.OpenFile(a, os.O_RDONLY, 0644)
 	if err != nil {
-		f, _ = os.OpenFile(fmt.Sprintf("%s/%s.dfile", db.dirPath, kdValue.path), os.O_RDONLY, 0644)
+		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", kdValue.path))
+		f, err = os.OpenFile(b, os.O_RDONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
 	}
 	defer f.Close()
 
@@ -273,13 +285,11 @@ func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
 
 	tstamp := data[DeleteFlagOffset:TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
-
 	hasTimestampExpired := utils.HasTimestampExpired(tstamp64Bit)
 	if hasTimestampExpired {
 		return nil, errors.New(KEY_NOT_FOUND)
 	}
 
-	// get key size
 	ksz := data[TstampOffset:KeySizeOffset]
 	intKsz := utils.ByteToInt64(ksz)
 
@@ -293,8 +303,8 @@ func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
 
 	return &Segment{
 		tstamp: int64(tstamp64Bit),
-		ksz:    int32(intKsz),
-		vsz:    int32(intVsz),
+		ksz:    int64(intKsz),
+		vsz:    int64(intVsz),
 		k:      k,
 		v:      v,
 		offset: kdValue.offset,
@@ -303,6 +313,8 @@ func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
 }
 
 func (db *Db) getActiveFileSegments(filePath string) ([]*Segment, error) {
+	defer utils.Recover()
+
 	data, err := utils.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -385,7 +397,6 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 func (db *Db) CreateInactiveDatafile(dirPath string) error {
 	file, err := os.CreateTemp(dirPath, TempInactiveDataFilePattern)
 	db.setActiveDataFile(file.Name())
-	// db.lastOffset = 0
 	db.setLastOffset(0)
 	if err != nil {
 		return err
@@ -394,6 +405,8 @@ func (db *Db) CreateInactiveDatafile(dirPath string) error {
 }
 
 func (db *Db) CreateActiveDatafile(dirPath string) error {
+	defer utils.Recover()
+
 	dir, err := os.ReadDir(dirPath)
 	if err != nil {
 		return err
@@ -405,15 +418,15 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 		extension := path.Ext(file.Name())
 		if extension == ActiveSegmentDatafileSuffix {
 			inactiveName := fmt.Sprintf("%s.idfile", strings.Split(file.Name(), ".")[0])
-			oldPath := fmt.Sprintf("%s/%s", dirPath, file.Name())
-			newPath := fmt.Sprintf("%s/%s", dirPath, inactiveName)
+
+			oldPath := filepath.Join(dirPath, file.Name())
+			newPath := filepath.Join(dirPath, inactiveName)
 			os.Rename(oldPath, newPath)
 		}
 	}
 
 	file, err := os.CreateTemp(dirPath, TempDataFilePattern)
 	db.setActiveDataFile(file.Name())
-	// db.lastOffset = 0
 	db.setLastOffset(0)
 	if err != nil {
 		return err
@@ -430,6 +443,8 @@ func (db *Db) Close() error {
 }
 
 func Open(opts *Options) (*Db, error) {
+	defer utils.Recover()
+
 	dirPath := opts.Path
 	if dirPath == "" {
 		home, err := os.UserHomeDir()
@@ -479,10 +494,6 @@ func Open(opts *Options) (*Db, error) {
 	return db, nil
 }
 
-// func (db *Db) Count() int64 {
-// return int64(len(db.keyDir))
-// }
-
 func (db *Db) All() []*KeyValuePair {
 	return db.keyDir.List()
 }
@@ -516,9 +527,9 @@ func (db *Db) deleteKey(key []byte) error {
 	v := db.keyDir.Get(key)
 
 	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
-	b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", v.path))
 	f, err := os.OpenFile(a, os.O_WRONLY, 0644)
 	if err != nil {
+		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", v.path))
 		f, err = os.OpenFile(b, os.O_WRONLY, 0644)
 		if err != nil {
 			return err
@@ -526,8 +537,7 @@ func (db *Db) deleteKey(key []byte) error {
 	}
 	defer f.Close()
 
-	// f.Seek(v.offset, 0)
-	f.WriteAt([]byte("1"), v.offset)
+	f.WriteAt([]byte(DELETED_FLAG_SET_VALUE), v.offset)
 
 	db.keyDir.Delete(key)
 
@@ -543,28 +553,15 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 }
 
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
-	// oldValue, _ := db.GetSegmentFromKey(kv.Key)
-	// if oldValue != nil {
-	// db.ExpireKey(oldValue.offset) // TODO: fix this
-	// }
+	intKSz := int64(len(kv.Key))
+	intVSz := int64(len(utils.Encode(kv.Value)))
 
-	intKSz, err := utils.StringToInt(utils.Encode(len(kv.Key)))
-	if err != nil {
-		return nil, err
-	}
-
-	intVSz, err := utils.StringToInt(utils.Encode(len(utils.Encode(kv.Value))))
-	if err != nil {
-		return nil, err
-	}
-
-	encode := utils.Encode
 	newSegment := &Segment{
-		deleted: byte('0'),
-		ksz:     int32(len(kv.Key)),
-		vsz:     int32(len(encode(kv.Value))),
-		k:       encode(kv.Key),
-		v:       encode(kv.Value),
+		deleted: byte(DELETED_FLAG_UNSET_VALUE),
+		ksz:     int64(len(kv.Key)),
+		vsz:     int64(len(utils.Encode(kv.Value))),
+		k:       kv.Key,
+		v:       utils.Encode(kv.Value),
 		size:    int64(BlockSize + intKSz + intVSz),
 		offset:  db.LastOffset(),
 	}
@@ -575,7 +572,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	}
 
 	db.LimitDatafileToThreshold(int64(newSegment.size), &Options{})
-	err = db.WriteSegment(newSegment)
+	err := db.WriteSegment(newSegment)
 	if err != nil {
 		return nil, err
 	}
@@ -587,6 +584,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	}
 
 	db.setKeyDir(kv.Key, kdValue)
+
 	return kv.Value, err
 }
 
