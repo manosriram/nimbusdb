@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	_        = iota // ignore first value by assigning to blank identifier
+	_        = iota
 	KB int64 = 1 << (10 * iota)
 	MB
 	GB
@@ -59,7 +59,7 @@ const (
 	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"
 	OFFSET_EXCEEDED_FILE_SIZE = "offset exceeded file size"
 
-	DELETED_FLAG_BYTE_VALUE  = 49
+	DELETED_FLAG_BYTE_VALUE  = 0x31
 	DELETED_FLAG_SET_VALUE   = "1"
 	DELETED_FLAG_UNSET_VALUE = '0'
 )
@@ -68,7 +68,7 @@ type Segment struct {
 	deleted byte
 	fileID  string
 	offset  int64
-	size    int64
+	size    int64 // Equals BlockSize + keysize + valuesize
 	tstamp  int64
 	ksz     int64
 	vsz     int64
@@ -296,6 +296,8 @@ func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*Segment, error) {
 	// get value size
 	vsz := data[KeySizeOffset:ValueSizeOffset]
 	intVsz := utils.ByteToInt64(vsz)
+
+	// get key
 	k := data[ValueSizeOffset : ValueSizeOffset+intKsz]
 
 	// get value
