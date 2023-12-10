@@ -17,7 +17,7 @@ func main() {
 	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
 	for {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter text: ")
+		fmt.Printf("> ")
 		text, _ := reader.ReadString('\n')
 
 		text = strings.TrimSpace(text)
@@ -56,14 +56,6 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-		} else if text == "seek" {
-			// offset, _ := reader.ReadString('\n')
-			// o, _ := strconv.Atoi(fmt.Sprintf("%d", offset))
-			// kdValue := nimbusdb.KeyDirValue{
-			// offset: 31,
-			// }
-			// s := d.seekOffsetFromDataFile (31)
-			// fmt.Println("kv = ", string(s.Key()), string(s.Value()))
 		} else if text == "stat" {
 			d.CreateActiveDatafile(DirPath)
 		} else if text == "sync" {

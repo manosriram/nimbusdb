@@ -59,9 +59,9 @@ const (
 	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"
 	OFFSET_EXCEEDED_FILE_SIZE = "offset exceeded file size"
 
-	DELETED_FLAG_BYTE_VALUE  = 0x31
-	DELETED_FLAG_SET_VALUE   = "1"
-	DELETED_FLAG_UNSET_VALUE = '0'
+	DELETED_FLAG_BYTE_VALUE  = byte(0x31)
+	DELETED_FLAG_SET_VALUE   = byte(0x01)
+	DELETED_FLAG_UNSET_VALUE = byte(0x00)
 )
 
 type Segment struct {
@@ -386,7 +386,7 @@ func (db *Db) parseActiveSegmentFile(filePath string) error {
 			}
 		}
 
-		if int(offset+BlockSize) >= len(data) {
+		if int(offset+BlockSize) > len(data) {
 			offset += segment.size
 			break
 		}
@@ -539,7 +539,7 @@ func (db *Db) deleteKey(key []byte) error {
 	}
 	defer f.Close()
 
-	f.WriteAt([]byte(DELETED_FLAG_SET_VALUE), v.offset)
+	f.WriteAt([]byte{DELETED_FLAG_SET_VALUE}, v.offset)
 
 	db.keyDir.Delete(key)
 
@@ -559,7 +559,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	intVSz := int64(len(utils.Encode(kv.Value)))
 
 	newSegment := &Segment{
-		deleted: byte(DELETED_FLAG_UNSET_VALUE),
+		deleted: DELETED_FLAG_UNSET_VALUE,
 		ksz:     int64(len(kv.Key)),
 		vsz:     int64(len(utils.Encode(kv.Value))),
 		k:       kv.Key,
