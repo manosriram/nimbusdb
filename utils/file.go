@@ -34,19 +34,15 @@ func Int64ToByte(n int64) []byte {
 }
 
 func ByteToInt32(b []byte) int32 {
-	if len(b) < binary.MaxVarintLen32 {
-		for binary.MaxVarintLen64-len(b) > 0 {
-			b = append(b, 0)
-		}
+	if lesser := len(b) < binary.MaxVarintLen32; lesser {
+		b = b[:cap(b)]
 	}
 	return int32(binary.LittleEndian.Uint32(b))
 }
 
 func ByteToInt64(b []byte) int64 {
-	if len(b) < binary.MaxVarintLen64 {
-		for binary.MaxVarintLen64-len(b) > 0 {
-			b = append(b, 0)
-		}
+	if lesser := len(b) < binary.MaxVarintLen64; lesser {
+		b = b[:cap(b)]
 	}
 	return int64(binary.LittleEndian.Uint64(b))
 }
