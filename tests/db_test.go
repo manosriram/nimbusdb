@@ -293,3 +293,41 @@ func Test_ConcurrentDelete(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestDbReaderBasicReading(t *testing.T) {
+    // Initialize database and insert test data
+    d, err := nimbusdb.Open(opts)
+    assert.NoError(t, err)
+    defer d.Close()
+
+    // Insert known data into the database
+    for i := 0; i < 10; i++ {
+        key := fmt.Sprintf("key%02d", i) // Zero-padding for numeric order
+        value := fmt.Sprintf("value%d", i)
+        _, err := d.Set(&nimbusdb.KeyValuePair{Key: []byte(key), Value: []byte(value)})
+        assert.NoError(t, err)
+    }
+
+    // Initialize DbReader
+    reader := nimbusdb.NewDbReader(d)
+
+    // Read 10 items
+    items, err := reader.Read(3)
+    assert.NoError(t, err)
+    assert.Len(t, items, 3)
+
+    // Verify the items
+    for i, kv := range items {
+        expectedKey := fmt.Sprintf("key%02d", i)
+        expectedValue := fmt.Sprintf("value%d", i)
+        assert.Equal(t, utils.Encode(expectedKey), kv.Key)
+
+        // Decoding the value assuming it's a byte slice
+        // Adjust the decoding based on how it's encoded
+        valueStr := (kv.Value) // Direct conversion if it's []byte
+        assert.Equal(t, utils.Encode(expectedValue), valueStr) 
+    }
+
+    // Cleanup
+    os.RemoveAll(opts.Path)
+}

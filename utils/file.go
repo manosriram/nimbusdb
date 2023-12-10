@@ -63,6 +63,24 @@ func Encode(d interface{}) []byte {
 	}
 }
 
+func Decode(b []byte, originalType interface{}) (interface{}, error) {
+    switch originalType.(type) {
+    case string:
+        return string(b), nil
+    case int64:
+        return ByteToInt64(b), nil
+    case int32:
+        return ByteToInt32(b), nil
+    case int:
+        int32Val := ByteToInt32(b)
+        return int(int32Val), nil
+    default:
+        // Assuming default case is []byte
+        return b, nil
+    }
+}
+
+
 func ReadFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
