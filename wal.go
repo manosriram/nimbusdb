@@ -7,12 +7,52 @@ import (
 	"github.com/manosriram/nimbusdb/utils"
 )
 
-func (db *Db) WriteSegment(segment *Segment) error {
+type KeyValueEntry struct {
+	deleted byte
+	fileID  string
+	offset  int64
+	size    int64 // Equals StaticChunkSize + keysize + valuesize
+	tstamp  int64
+	ksz     int64
+	vsz     int64
+	k       []byte
+	v       []byte
+}
+
+func (s *KeyValueEntry) StaticChunkSize() int {
+	return StaticChunkSize + len(s.k) + len(s.v)
+}
+
+func (s *KeyValueEntry) Key() []byte {
+	return s.k
+}
+
+func (s *KeyValueEntry) Value() []byte {
+	return s.v
+}
+
+func (s *KeyValueEntry) ToByte() []byte {
+	keyValueEntryInBytes := make([]byte, 0, s.StaticChunkSize())
+
+	buf := make([]byte, 0)
+	buf = append(buf, s.deleted)
+	buf = append(buf, utils.Int64ToByte(s.tstamp)...)
+	buf = append(buf, utils.Int64ToByte(s.ksz)...)
+	buf = append(buf, utils.Int64ToByte(s.vsz)...)
+
+	keyValueEntryInBytes = append(keyValueEntryInBytes, buf...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, s.k...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, s.v...)
+
+	return keyValueEntryInBytes
+}
+
+func (db *Db) WriteKeyValueEntry(keyValueEntry *KeyValueEntry) error {
 	f, err := db.getActiveDataFilePointer()
 	if err != nil {
 		return err
 	}
-	_, err = f.Write(segment.ToByte())
+	_, err = f.Write(keyValueEntry.ToByte())
 	return err
 }
 

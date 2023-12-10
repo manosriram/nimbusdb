@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	BlockSize = 10
+)
+
 func TimeUntilUnixNano(tstamp int64) time.Duration {
 	return time.Until(time.Unix(0, tstamp))
 }
@@ -93,4 +97,8 @@ func Recover() {
 		log.Printf("panic occurred: %v\n", err)
 		os.Exit(0)
 	}
+}
+
+func GetBlockNumber(offset int64) int64 {
+	return offset % BlockSize
 }

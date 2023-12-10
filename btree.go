@@ -60,9 +60,9 @@ func (b *BTree) List() []*KeyValuePair {
 	var pairs []*KeyValuePair
 	b.tree.Ascend(func(it btree.Item) bool {
 		pairs = append(pairs, &KeyValuePair{
-			Key:       it.(*item).key,
-			Value:     it.(*item).v,
-			ExpiresIn: utils.TimeUntilUnixNano(it.(*item).v.tstamp),
+			Key:   it.(*item).key,
+			Value: it.(*item).v,
+			Ttl:   utils.TimeUntilUnixNano(it.(*item).v.tstamp),
 		})
 		return true
 	})
