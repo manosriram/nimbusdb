@@ -253,7 +253,6 @@ func Test_ConcurrentGet(t *testing.T) {
 	wg.Add(numGoRoutines)
 
 	for i := 0; i < numGoRoutines; i++ {
-		fmt.Println("getting ", i)
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(fmt.Sprintf("%d", i)),
 			Value: []byte(fmt.Sprintf("testvalue%d", i)),

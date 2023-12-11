@@ -38,6 +38,7 @@ func (b *BTree) Get(key []byte) (*KeyDirValue, []*KeyDirValue) {
 	if i == nil {
 		return nil, nil
 	}
+	// fmt.Println("i = ", i)
 	keyItem := i.(*item)
 
 	v := make([]*KeyDirValue, 0)

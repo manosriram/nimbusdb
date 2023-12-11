@@ -182,6 +182,7 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 }
 
 func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
+	// TODO: move this to someplace better
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -555,6 +556,10 @@ func (db *Db) GetKeyValueEntryFromKey(key []byte) (*KeyValueEntry, error) {
 }
 
 func (db *Db) deleteKey(key []byte) error {
+	// TODO: move this to someplace better
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	v, _ := db.keyDir.Get(key)
 
 	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
