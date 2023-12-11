@@ -88,6 +88,7 @@ func Test_InMemory_Stress_SetGet(t *testing.T) {
 		assert.Equal(t, err, nil)
 		assert.Equal(t, v, []byte("testvalue1"))
 	}
+
 	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(fmt.Sprintf("%d", i)),
@@ -252,6 +253,7 @@ func Test_ConcurrentGet(t *testing.T) {
 	wg.Add(numGoRoutines)
 
 	for i := 0; i < numGoRoutines; i++ {
+		fmt.Println("getting ", i)
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(fmt.Sprintf("%d", i)),
 			Value: []byte(fmt.Sprintf("testvalue%d", i)),

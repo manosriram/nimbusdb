@@ -1,6 +1,7 @@
 package nimbusdb
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/btree"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	utils "github.com/manosriram/nimbusdb/utils"
 )
 
@@ -36,7 +38,9 @@ const (
 	TempDataFilePattern                 = "*.dfile"
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
-	DatafileThreshold                   = 5 * MB
+
+	DatafileThreshold = 5 * MB
+	BlockSize         = 32 * KB
 )
 
 const (
@@ -44,8 +48,9 @@ const (
 	TstampOffset           = 11
 	KeySizeOffset          = 21
 	ValueSizeOffset        = 31
-	StaticChunkSize        = 1 + 10 + 10 + 10
-	BTreeDegree            = 10
+
+	StaticChunkSize = 1 + 10 + 10 + 10
+	BTreeDegree     = 10
 )
 const (
 	TotalStaticChunkSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + DeleteFlagOffset + StaticChunkSize
@@ -61,6 +66,10 @@ const (
 	DELETED_FLAG_BYTE_VALUE  = byte(0x31)
 	DELETED_FLAG_SET_VALUE   = byte(0x01)
 	DELETED_FLAG_UNSET_VALUE = byte(0x00)
+)
+
+var (
+	KEY_VALUE_SIZE_EXCEEDED = fmt.Sprintf("exceeded limit of %d bytes", BlockSize)
 )
 
 type Options struct {
@@ -81,17 +90,22 @@ type KeyDirValue struct {
 	size        int64
 	path        string
 	tstamp      int64
+	B           int64
 }
 
 type Db struct {
-	mu                    sync.Mutex
 	dirPath               string
+	mu                    sync.RWMutex
 	dataFilePath          string
 	activeDataFilePointer *os.File
 	activeDataFile        string
 	lastOffset            atomic.Int64
 	keyDir                *BTree
 	opts                  *Options
+	lru                   *expirable.LRU[int64, *Block]
+
+	currentBlockOffset atomic.Int64
+	currentBlockNumber atomic.Int64
 }
 
 func NewDb(dirPath string) *Db {
@@ -100,6 +114,7 @@ func NewDb(dirPath string) *Db {
 		keyDir: &BTree{
 			tree: btree.New(BTreeDegree),
 		},
+		lru: expirable.NewLRU[int64, *Block](50, nil, 24*time.Hour),
 	}
 
 	return db
@@ -135,38 +150,85 @@ func (db *Db) setActiveDataFile(activeDataFile string) error {
 	return nil
 }
 
-func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) interface{} {
+func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 	if len(key) == 0 || kdValue.offset < 0 {
-		return nil
+		return nil, nil
 	}
+
+	if kdValue.size > BlockSize {
+		return nil, errors.New(KEY_VALUE_SIZE_EXCEEDED)
+	}
+
+	exists := db.keyDir.Get(key)
+	if exists != nil {
+		db.keyDir.Delete(key)
+	}
+
+	if db.currentBlockOffset.Load()+kdValue.size <= BlockSize {
+		kdValue.blockNumber = db.currentBlockNumber.Load()
+		db.currentBlockOffset.Add(kdValue.size)
+	} else {
+		db.currentBlockNumber.Add(1)
+		kdValue.blockNumber = db.currentBlockNumber.Load()
+		db.currentBlockOffset.Store(kdValue.size)
+	}
+	// fmt.Printf("currentBlockNumber = %d, currentBlockOffset = %d, size = %d\n", db.currentBlockNumber.Load(), db.currentBlockOffset.Load(), kdValue.size)
+
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
 	db.keyDir.Set(key, kdValue)
+	db.lru.Remove(db.currentBlockNumber.Load())
 
-	return kdValue
+	return kdValue, nil
 }
 
 func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
-	x := db.keyDir.Get(key)
-	if x == nil {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	var blockKeyDirValues []*KeyDirValue
+	var block = new(Block)
+	x := new(KeyDirValue)
+	blockNumber := db.keyDir.GetBlockNumber(key)
+
+	if blockNumber == -1 {
 		return nil, errors.New(KEY_NOT_FOUND)
 	}
-	// fmt.Println(*&x.blockNumber)
-
-	v, err := db.seekOffsetFromDataFile(*x)
-	if err != nil {
-		return nil, err
+	v, ok := db.lru.Get(blockNumber)
+	if ok {
+		block = v
+		for _, entry := range block.entries {
+			if bytes.Compare(key, entry.k) == 0 {
+				return entry, nil
+			}
+		}
+	} else {
+		x, blockKeyDirValues = db.keyDir.Get(key)
 	}
 
-	tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
-	if err != nil {
-		return nil, err
+	var k = new(KeyValueEntry)
+	for _, entry := range blockKeyDirValues {
+		v, err := db.seekOffsetFromDataFile(*entry)
+		if err != nil {
+			return nil, err
+		}
+
+		tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		hasTimestampExpired := utils.HasTimestampExpired(tstampString)
+		if hasTimestampExpired {
+			continue
+		}
+
+		v.blockNumber = blockNumber
+		block.entries = append(block.entries, v)
+		if entry.offset == x.offset {
+			k = v
+		}
 	}
-	hasTimestampExpired := utils.HasTimestampExpired(tstampString)
-	if hasTimestampExpired {
-		db.keyDir.Delete(key)
-		return nil, errors.New(KEY_NOT_FOUND)
-	}
-	return v, nil
+	db.lru.Add(blockNumber, block)
+	return k, nil
 }
 
 func getKeyValueEntryFromOffset(offset int64, data []byte) (*KeyValueEntry, error) {
@@ -299,13 +361,15 @@ func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, e
 				split := strings.Split(filePath, "/")
 				fileName := split[len(split)-1]
 				kdValue := KeyDirValue{
-					offset:      keyValueEntry.offset,
-					size:        keyValueEntry.size,
-					path:        strings.Split(fileName, ".")[0],
-					tstamp:      keyValueEntry.tstamp,
-					blockNumber: utils.GetBlockNumber(keyValueEntry.offset),
+					offset: keyValueEntry.offset,
+					size:   keyValueEntry.size,
+					path:   strings.Split(fileName, ".")[0],
+					tstamp: keyValueEntry.tstamp,
 				}
-				db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
+				_, err := db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
+				if err != nil {
+					return nil, err
+				}
 				keyValueEntries = append(keyValueEntries, keyValueEntry)
 			}
 		}
@@ -339,13 +403,15 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 			if !hasTimestampExpired {
 				fileName := strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 				kdValue := KeyDirValue{
-					offset:      keyValueEntry.offset,
-					size:        keyValueEntry.size,
-					path:        fileName,
-					tstamp:      keyValueEntry.tstamp,
-					blockNumber: utils.GetBlockNumber(keyValueEntry.offset),
+					offset: keyValueEntry.offset,
+					size:   keyValueEntry.size,
+					path:   fileName,
+					tstamp: keyValueEntry.tstamp,
 				}
-				db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
+				_, err := db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -489,7 +555,7 @@ func (db *Db) GetKeyValueEntryFromKey(key []byte) (*KeyValueEntry, error) {
 }
 
 func (db *Db) deleteKey(key []byte) error {
-	v := db.keyDir.Get(key)
+	v, _ := db.keyDir.Get(key)
 
 	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
 	f, err := os.OpenFile(a, os.O_WRONLY, 0644)
@@ -542,14 +608,16 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		return nil, err
 	}
 	kdValue := KeyDirValue{
-		offset:      newKeyValueEntry.offset,
-		size:        newKeyValueEntry.size,
-		path:        strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
-		tstamp:      newKeyValueEntry.tstamp,
-		blockNumber: utils.GetBlockNumber(newKeyValueEntry.offset),
+		offset: newKeyValueEntry.offset,
+		size:   newKeyValueEntry.size,
+		path:   strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
+		tstamp: newKeyValueEntry.tstamp,
 	}
 
-	db.setKeyDir(kv.Key, kdValue)
+	_, err = db.setKeyDir(kv.Key, kdValue)
+	if err != nil {
+		return nil, err
+	}
 
 	return kv.Value, err
 }
