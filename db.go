@@ -159,10 +159,10 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		return nil, errors.New(KEY_VALUE_SIZE_EXCEEDED)
 	}
 
-	exists := db.keyDir.Get(key)
-	if exists != nil {
-		db.keyDir.Delete(key)
-	}
+	// exists := db.keyDir.Get(key)
+	// if exists != nil {
+	// db.keyDir.Delete(key)
+	// }
 
 	if db.currentBlockOffset.Load()+kdValue.size <= BlockSize {
 		kdValue.blockNumber = db.currentBlockNumber.Load()
