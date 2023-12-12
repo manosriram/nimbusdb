@@ -36,7 +36,7 @@ const (
 	TempDataFilePattern           = "*.dfile"
 	TempInactiveDataFilePattern   = "*.idfile"
 	DefaultDataDir                = "nimbusdb"
-	DatafileThreshold             = 5 * MB
+	DatafileThreshold             = 500
 )
 
 const (
@@ -179,7 +179,9 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) interface{} {
 	if len(key) == 0 || kdValue.offset < 0 {
 		return nil
 	}
-	db.lastOffset.Store(kdValue.offset + kdValue.size)
+	if db.lastOffset.Load() != 0 {
+		db.lastOffset.Store(kdValue.offset + kdValue.size)
+	}
 	db.keyDir.Set(key, kdValue)
 
 	return kdValue
@@ -573,11 +575,6 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		newSegment.tstamp = int64(time.Now().Add(KEY_EXPIRES_IN_DEFAULT).UnixNano())
 	}
 
-	db.LimitDatafileToThreshold(int64(newSegment.size), &Options{})
-	err := db.WriteSegment(newSegment)
-	if err != nil {
-		return nil, err
-	}
 	kdValue := KeyDirValue{
 		offset: newSegment.offset,
 		size:   newSegment.size,
@@ -586,6 +583,11 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	}
 
 	db.setKeyDir(kv.Key, kdValue)
+	db.LimitDatafileToThreshold(int64(newSegment.size), &Options{})
+	err := db.WriteSegment(newSegment)
+	if err != nil {
+		return nil, err
+	}
 
 	return kv.Value, err
 }
