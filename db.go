@@ -36,7 +36,7 @@ const (
 	TempDataFilePattern           = "*.dfile"
 	TempInactiveDataFilePattern   = "*.idfile"
 	DefaultDataDir                = "nimbusdb"
-	DatafileThreshold             = 1 * MB
+	DatafileThreshold             = 300 * KB
 )
 
 const (
