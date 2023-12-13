@@ -516,9 +516,7 @@ func (db *Db) LimitDatafileToThreshold(newSegment *Segment, opts *Options) {
 			os.Remove(opts.MergeFilePath)
 		} else {
 			db.CreateActiveDatafile(db.dirPath)
-			if db.lastOffset.Load() == 0 {
-				newSegment.offset = 0
-			}
+			newSegment.offset = 0
 		}
 	}
 }
