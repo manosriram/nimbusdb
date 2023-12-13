@@ -36,7 +36,7 @@ const (
 	TempDataFilePattern           = "*.dfile"
 	TempInactiveDataFilePattern   = "*.idfile"
 	DefaultDataDir                = "nimbusdb"
-	DatafileThreshold             = 5 * MB
+	DatafileThreshold             = 300 * KB
 )
 
 const (
@@ -124,7 +124,7 @@ type KeyDirValue struct {
 }
 
 type Db struct {
-	mu                    sync.Mutex
+	mu                    sync.RWMutex
 	dirPath               string
 	dataFilePath          string
 	activeDataFilePointer *os.File
@@ -500,7 +500,7 @@ func (db *Db) All() []*KeyValuePair {
 	return db.keyDir.List()
 }
 
-func (db *Db) LimitDatafileToThreshold(add int64, opts *Options) {
+func (db *Db) LimitDatafileToThreshold(newSegment *Segment, opts *Options) {
 	var sz os.FileInfo
 	var err error
 	f, err := db.getActiveDataFilePointer()
@@ -510,12 +510,13 @@ func (db *Db) LimitDatafileToThreshold(add int64, opts *Options) {
 	}
 	size := sz.Size()
 
-	if size+add > DatafileThreshold {
+	if size+newSegment.size > DatafileThreshold {
 		if opts.IsMerge {
 			db.CreateInactiveDatafile(db.dirPath)
 			os.Remove(opts.MergeFilePath)
 		} else {
 			db.CreateActiveDatafile(db.dirPath)
+			newSegment.offset = 0
 		}
 	}
 }
@@ -547,6 +548,9 @@ func (db *Db) deleteKey(key []byte) error {
 }
 
 func (db *Db) Get(key []byte) ([]byte, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
 	v, _ := db.getKeyDir(key)
 	if v == nil {
 		return nil, errors.New(KEY_NOT_FOUND)
@@ -555,9 +559,11 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 }
 
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	intKSz := int64(len(kv.Key))
 	intVSz := int64(len(utils.Encode(kv.Value)))
-
 	newSegment := &Segment{
 		deleted: DELETED_FLAG_UNSET_VALUE,
 		ksz:     int64(len(kv.Key)),
@@ -573,24 +579,26 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		newSegment.tstamp = int64(time.Now().Add(KEY_EXPIRES_IN_DEFAULT).UnixNano())
 	}
 
-	db.LimitDatafileToThreshold(int64(newSegment.size), &Options{})
+	db.LimitDatafileToThreshold(newSegment, &Options{})
 	err := db.WriteSegment(newSegment)
 	if err != nil {
 		return nil, err
 	}
+
 	kdValue := KeyDirValue{
 		offset: newSegment.offset,
 		size:   newSegment.size,
 		path:   strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
 		tstamp: newSegment.tstamp,
 	}
-
 	db.setKeyDir(kv.Key, kdValue)
-
 	return kv.Value, err
 }
 
 func (db *Db) Delete(key []byte) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	err := db.deleteKey(key)
 	return err
 }
@@ -613,7 +621,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	}
 
 	for _, segment := range segments {
-		db.LimitDatafileToThreshold(segment.size, &Options{
+		db.LimitDatafileToThreshold(segment, &Options{
 			IsMerge:       true,
 			MergeFilePath: path,
 		})
