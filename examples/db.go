@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/nimbusdb/test_data"
+	DirPath = "./tests/nimbusdb_temp1137407642"
 )
 
 func main() {
