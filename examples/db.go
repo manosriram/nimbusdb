@@ -41,7 +41,7 @@ func main() {
 		} else if text == "all" {
 			pairs := d.All()
 			for i, pair := range pairs {
-				fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.ExpiresIn)
+				fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.Ttl)
 			}
 		} else if text == "exit" {
 			os.Exit(1)

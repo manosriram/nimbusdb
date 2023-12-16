@@ -36,9 +36,9 @@ func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
 	assert.NotEqual(t, d, nil)
 
 	kv := &nimbusdb.KeyValuePair{
-		Key:       []byte("testkey1"),
-		Value:     []byte("testvalue1"),
-		ExpiresIn: EXPIRY_DURATION,
+		Key:   []byte("testkey1"),
+		Value: []byte("testvalue1"),
+		Ttl:   EXPIRY_DURATION,
 	}
 	v, err := d.Set(kv)
 	assert.Equal(t, err, nil)
@@ -88,6 +88,7 @@ func Test_InMemory_Stress_SetGet(t *testing.T) {
 		assert.Equal(t, err, nil)
 		assert.Equal(t, v, []byte("testvalue1"))
 	}
+
 	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(fmt.Sprintf("%d", i)),

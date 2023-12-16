@@ -22,12 +22,34 @@ func (it item) Less(i btree.Item) bool {
 	return bytes.Compare(it.key, i.(*item).key) < 0
 }
 
-func (b *BTree) Get(key []byte) *KeyDirValue {
+func (b *BTree) GetBlockNumber(key []byte) int64 {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	i := b.tree.Get(&item{key: key})
-	if i != nil {
-		return &i.(*item).v
+	if i == nil {
+		return -1
 	}
-	return nil
+	return i.(*item).v.blockNumber
+}
+
+func (b *BTree) Get(key []byte) (*KeyDirValue, []*KeyDirValue) {
+	i := b.tree.Get(&item{key: key})
+	if i == nil {
+		return nil, nil
+	}
+	// fmt.Println("i = ", i)
+	keyItem := i.(*item)
+
+	v := make([]*KeyDirValue, 0)
+	b.tree.Ascend(func(it btree.Item) bool {
+		itm := it.(*item)
+		if itm.v.blockNumber == keyItem.v.blockNumber {
+			v = append(v, &itm.v)
+		}
+		return true
+	})
+	return &keyItem.v, v
 }
 
 func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
@@ -54,9 +76,9 @@ func (b *BTree) List() []*KeyValuePair {
 	var pairs []*KeyValuePair
 	b.tree.Ascend(func(it btree.Item) bool {
 		pairs = append(pairs, &KeyValuePair{
-			Key:       it.(*item).key,
-			Value:     it.(*item).v,
-			ExpiresIn: utils.TimeUntilUnixNano(it.(*item).v.tstamp),
+			Key:   it.(*item).key,
+			Value: it.(*item).v,
+			Ttl:   utils.TimeUntilUnixNano(it.(*item).v.tstamp),
 		})
 		return true
 	})
