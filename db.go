@@ -167,7 +167,7 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 	// db.keyDir.Delete(key)
 	// }
 
-	if db.currentBlockOffset.Load()+kdValue.size <= BlockSize {
+	if db.currentBlockOffset.Load()+kdValue.size < BlockSize {
 		kdValue.blockNumber = db.currentBlockNumber.Load()
 		db.currentBlockOffset.Add(kdValue.size)
 	} else {
@@ -189,7 +189,6 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	var blockKeyDirValues []*KeyDirValue
 	var block = new(Block)
 	x := new(KeyDirValue)
 	blockNumber := db.keyDir.GetBlockNumber(key)
@@ -198,48 +197,107 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 		return nil, errors.New(KEY_NOT_FOUND)
 	}
 	v, ok := db.lru.Get(blockNumber)
+	// fmt.Println(v)
 	if ok {
 		block = v
+		// fmt.Println("key = ", string(key))
 		for _, entry := range block.entries {
+			// fmt.Println(string(entry.k))
 			if bytes.Compare(key, entry.k) == 0 {
+				// fmt.Println("from cache")
 				return entry, nil
 			}
 		}
 	} else {
-		x, blockKeyDirValues = db.keyDir.Get(key)
+		x = db.keyDir.Get(key)
+		// fmt.Println(x)
 	}
 
-	fmt.Println("block = ", blockNumber)
-	var k = new(KeyValueEntry)
-	for _, entry := range db.keyDir.blockOffsets {
-		fmt.Println("e ", entry)
-	}
-	for _, entry := range blockKeyDirValues {
-		v, err := db.seekOffsetFromDataFile(*entry)
-		if err != nil {
-			return nil, err
-		}
+	var kv = new(KeyValueEntry)
+	bl := db.keyDir.blockOffsets[blockNumber]
+	// for _, entry := range db.keyDir.blockOffsets {
+	offset := bl.startOffset
+	// fmt.Println(bl.startOffset, bl.endOffset)
+	// var entries []*KeyValueEntry
+	for offset <= BlockSize {
+		fmt.Println(offset)
+		k, _ := db.getKeyValueEntryFromOffsetViaFilePath(offset, bl.filePath)
+		if k != nil {
+			// entries = append(entries, k)
+			tstampString, err := strconv.ParseInt(fmt.Sprint(k.tstamp), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			hasTimestampExpired := utils.HasTimestampExpired(tstampString)
+			if hasTimestampExpired {
+				continue
+			}
 
-		tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		hasTimestampExpired := utils.HasTimestampExpired(tstampString)
-		if hasTimestampExpired {
+			kv.blockNumber = blockNumber
+			block.entries = append(block.entries, k)
+			if k.offset == x.offset {
+				kv = k
+			}
+			offset += k.size
 			continue
-		}
-
-		v.blockNumber = blockNumber
-		block.entries = append(block.entries, v)
-		if entry.offset == x.offset {
-			k = v
+		} else {
+			fmt.Println("is nil")
+			break
 		}
 	}
+
+	// }
+	// for _, entry := range blockKeyDirValues {
+	// v, err := db.seekOffsetFromDataFile(*entry)
+	// if err != nil {
+	// return nil, err
+	// }
+
+	// tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
+	// if err != nil {
+	// return nil, err
+	// }
+	// hasTimestampExpired := utils.HasTimestampExpired(tstampString)
+	// if hasTimestampExpired {
+	// continue
+	// }
+
+	// v.blockNumber = blockNumber
+	// block.entries = append(block.entries, v)
+	// if entry.offset == x.offset {
+	// k = v
+	// }
+	// }
+	db.lru.Remove(blockNumber)
+
+	// fmt.Println("adding block")
+	// for _, zz := range block.entries {
+	// fmt.Println(string(zz.Key()))
+	// }
 	db.lru.Add(blockNumber, block)
-	return k, nil
+	return kv, nil
 }
 
-func getKeyValueEntryFromOffset(offset int64, data []byte) (*KeyValueEntry, error) {
+func (db *Db) getKeyValueEntryFromOffsetViaFilePath(offset int64, path string) (*KeyValueEntry, error) {
+	// TODO: improve dfile and idfile recognizing
+	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", path))
+	f, err := os.OpenFile(a, os.O_RDONLY, 0644)
+	if err != nil {
+		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", path))
+		f, err = os.OpenFile(b, os.O_RDONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
+	defer f.Close()
+	data := make([]byte, 1000)
+	f.Seek(offset, io.SeekCurrent)
+	f.Read(data)
+
+	return getKeyValueEntryFromOffsetViaData(offset, data)
+}
+
+func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntry, error) {
 	defer utils.Recover()
 
 	if int(offset+StaticChunkSize) > len(data) {
@@ -357,7 +415,7 @@ func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, e
 
 	var offset int64 = 0
 	for offset < int64(len(data)) {
-		keyValueEntry, err := getKeyValueEntryFromOffset(offset, data)
+		keyValueEntry, err := getKeyValueEntryFromOffsetViaData(offset, data)
 		if err != nil {
 			return nil, err
 		}
@@ -400,7 +458,7 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 
 	var offset int64 = 0
 	for offset < int64(len(data)) {
-		keyValueEntry, err := getKeyValueEntryFromOffset(offset, data)
+		keyValueEntry, err := getKeyValueEntryFromOffsetViaData(offset, data)
 		if err != nil {
 			return err
 		}
@@ -568,7 +626,7 @@ func (db *Db) deleteKey(key []byte) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	v, _ := db.keyDir.Get(key)
+	v := db.keyDir.Get(key)
 
 	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
 	f, err := os.OpenFile(a, os.O_WRONLY, 0644)

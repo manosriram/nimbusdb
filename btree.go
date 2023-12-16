@@ -41,23 +41,23 @@ func (b *BTree) GetBlockNumber(key []byte) int64 {
 	return i.(*item).v.blockNumber
 }
 
-func (b *BTree) Get(key []byte) (*KeyDirValue, []*KeyDirValue) {
+func (b *BTree) Get(key []byte) *KeyDirValue {
 	i := b.tree.Get(&item{key: key})
 	if i == nil {
-		return nil, nil
+		return nil
 	}
 	// fmt.Println("i = ", i)
-	keyItem := i.(*item)
+	return &i.(*item).v
 
-	v := make([]*KeyDirValue, 0)
-	b.tree.Ascend(func(it btree.Item) bool {
-		itm := it.(*item)
-		if itm.v.blockNumber == keyItem.v.blockNumber {
-			v = append(v, &itm.v)
-		}
-		return true
-	})
-	return &keyItem.v, v
+	// v := make([]*KeyDirValue, 0)
+	// b.tree.Ascend(func(it btree.Item) bool {
+	// itm := it.(*item)
+	// if itm.v.blockNumber == keyItem.v.blockNumber {
+	// v = append(v, &itm.v)
+	// }
+	// return true
+	// })
+	// return &keyItem.v, v
 }
 
 func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
@@ -65,23 +65,20 @@ func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
 	if i != nil {
 		return &i.(*item).v
 	}
-	y := b.blockOffsets[value.blockNumber]
-	fmt.Println("s = ", y.startOffset)
-	if y.startOffset == 0 {
+	y, ok := b.blockOffsets[value.blockNumber]
+	if !ok {
 		y.startOffset = value.offset
 		y.filePath = value.path
 		b.blockOffsets[value.blockNumber] = y
-		// x.Store(value.offset)
-		// b.blockOffsets[value.blockNumber].startOffset = x
-
 		fmt.Printf("block = %d, path = %s, start offset = %d\n", value.blockNumber, value.path, value.offset)
 	} else {
 		y.endOffset = value.offset
+		y.filePath = value.path
 		b.blockOffsets[value.blockNumber] = y
 		// x := b.blockOffsets[value.blockNumber].endOffset
 		// x.Store(value.offset)
 		// b.blockOffsets[value.blockNumber].endOffset = x
-		fmt.Printf("block = %d, path = %s, end offset = %d\n", value.blockNumber, value.path, value.offset)
+		fmt.Printf("block = %d, path = %s, start offset = %d, end offset = %d\n", value.blockNumber, value.path, y.startOffset, value.offset)
 	}
 
 	return nil
