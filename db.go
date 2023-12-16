@@ -40,7 +40,7 @@ const (
 	DefaultDataDir                      = "nimbusdb"
 
 	DatafileThreshold = 5 * MB
-	BlockSize         = 32 * KB
+	BlockSize         = 100
 )
 
 const (
@@ -109,10 +109,13 @@ type Db struct {
 }
 
 func NewDb(dirPath string) *Db {
+	off := make(map[int64]BlockOffsetPair)
+	fmt.Println(off)
 	db := &Db{
 		dirPath: dirPath,
 		keyDir: &BTree{
-			tree: btree.New(BTreeDegree),
+			tree:         btree.New(BTreeDegree),
+			blockOffsets: off,
 		},
 		lru: expirable.NewLRU[int64, *Block](50, nil, 24*time.Hour),
 	}
@@ -206,7 +209,11 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 		x, blockKeyDirValues = db.keyDir.Get(key)
 	}
 
+	fmt.Println("block = ", blockNumber)
 	var k = new(KeyValueEntry)
+	for _, entry := range db.keyDir.blockOffsets {
+		fmt.Println("e ", entry)
+	}
 	for _, entry := range blockKeyDirValues {
 		v, err := db.seekOffsetFromDataFile(*entry)
 		if err != nil {

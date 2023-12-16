@@ -2,15 +2,23 @@ package nimbusdb
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 
 	"github.com/google/btree"
 	"github.com/manosriram/nimbusdb/utils"
 )
 
+type BlockOffsetPair struct {
+	startOffset int64
+	endOffset   int64
+	filePath    string
+}
+
 type BTree struct {
-	tree *btree.BTree
-	mu   sync.RWMutex
+	tree         *btree.BTree
+	blockOffsets map[int64]BlockOffsetPair
+	mu           sync.RWMutex
 }
 
 type item struct {
@@ -57,6 +65,25 @@ func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
 	if i != nil {
 		return &i.(*item).v
 	}
+	y := b.blockOffsets[value.blockNumber]
+	fmt.Println("s = ", y.startOffset)
+	if y.startOffset == 0 {
+		y.startOffset = value.offset
+		y.filePath = value.path
+		b.blockOffsets[value.blockNumber] = y
+		// x.Store(value.offset)
+		// b.blockOffsets[value.blockNumber].startOffset = x
+
+		fmt.Printf("block = %d, path = %s, start offset = %d\n", value.blockNumber, value.path, value.offset)
+	} else {
+		y.endOffset = value.offset
+		b.blockOffsets[value.blockNumber] = y
+		// x := b.blockOffsets[value.blockNumber].endOffset
+		// x.Store(value.offset)
+		// b.blockOffsets[value.blockNumber].endOffset = x
+		fmt.Printf("block = %d, path = %s, end offset = %d\n", value.blockNumber, value.path, value.offset)
+	}
+
 	return nil
 }
 
