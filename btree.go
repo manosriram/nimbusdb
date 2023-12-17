@@ -11,7 +11,6 @@ import (
 type BlockOffsetPair struct {
 	startOffset int64
 	endOffset   int64
-	filePath    string
 }
 
 type BTree struct {
@@ -30,9 +29,6 @@ func (it item) Less(i btree.Item) bool {
 }
 
 func (b *BTree) Get(key []byte) *KeyDirValue {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	i := b.tree.Get(&item{key: key})
 	if i == nil {
 		return nil
@@ -45,18 +41,15 @@ func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
 	y, ok := b.blockOffsets[value.blockNumber]
 	if !ok {
 		y.startOffset = value.offset
-		y.endOffset = value.offset
-		y.filePath = value.path
+		y.endOffset = value.offset + value.size
 		b.blockOffsets[value.blockNumber] = y
 	} else {
-		y.endOffset = value.offset
-		y.filePath = value.path
+		y.endOffset = value.offset + value.size
 		b.blockOffsets[value.blockNumber] = y
 	}
 	if i != nil {
 		return &i.(*item).v
 	}
-
 	return nil
 }
 

@@ -39,8 +39,8 @@ const (
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
 
-	DatafileThreshold = 5 * MB
-	BlockSize         = 100
+	DatafileThreshold = 50
+	BlockSize         = 16 * KB
 )
 
 const (
@@ -183,23 +183,17 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 }
 
 func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
-	// TODO: move this to someplace better
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	var cacheBlock = new(Block)
 
-	var block = new(Block)
-	x := db.keyDir.Get(key)
-	if x == nil {
+	kv := db.keyDir.Get(key)
+	if kv == nil || kv.blockNumber == -1 {
 		return nil, errors.New(KEY_NOT_FOUND)
 	}
 
-	if x.blockNumber == -1 {
-		return nil, errors.New(KEY_NOT_FOUND)
-	}
-	blockCache, ok := db.lru.Get(x.blockNumber)
+	cachedBlock, ok := db.lru.Get(kv.blockNumber)
 	if ok {
-		block = blockCache
-		for _, entry := range block.entries {
+		cacheBlock = cachedBlock
+		for _, entry := range cacheBlock.entries {
 			if bytes.Compare(key, entry.k) == 0 {
 				return entry, nil
 			}
@@ -207,20 +201,27 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	}
 
 	var v *KeyValueEntry
-	bl := db.keyDir.blockOffsets[x.blockNumber]
-	data, _ := db.getKeyValueEntryFromOffsetViaFilePath(bl.startOffset, bl.endOffset-bl.startOffset, bl.filePath)
-	offset := bl.startOffset
-	for offset <= bl.endOffset {
-		pair, _ := getKeyValueEntryFromOffsetViaData(offset, data)
+	block := db.keyDir.blockOffsets[kv.blockNumber]
+	data, err := db.getKeyValueEntryFromOffsetViaFilePath(block.startOffset, block.endOffset-block.startOffset, kv.path)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := block.startOffset
+	for offset < block.endOffset {
+		pair, err := getKeyValueEntryFromOffsetViaData(offset, data)
+		if err != nil {
+			return nil, err
+		}
+
 		if pair != nil {
-			if pair.offset == x.offset {
+			if pair.offset == kv.offset {
 				v = pair
 			}
 			offset += pair.size
-			block.entries = append(block.entries, pair)
+			cacheBlock.entries = append(cacheBlock.entries, pair)
 			continue
 		}
-
 		break
 	}
 
@@ -234,7 +235,7 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 			db.keyDir.Delete(key)
 			return nil, errors.New(KEY_NOT_FOUND)
 		}
-		db.lru.Add(x.blockNumber, block)
+		db.lru.Add(kv.blockNumber, cacheBlock)
 		return v, nil
 	}
 
@@ -607,6 +608,9 @@ func (db *Db) deleteKey(key []byte) error {
 }
 
 func (db *Db) Get(key []byte) ([]byte, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	v, _ := db.getKeyDir(key)
 	if v == nil {
 		return nil, errors.New(KEY_NOT_FOUND)

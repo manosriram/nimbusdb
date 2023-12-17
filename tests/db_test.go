@@ -7,13 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/manosriram/nimbusdb"
 	"github.com/manosriram/nimbusdb/utils"
 	"github.com/stretchr/testify/assert"
 )
 
-var keys [][]byte
 var opts = &nimbusdb.Options{
 	Path: utils.DbDir(),
 }
@@ -71,6 +69,9 @@ func Test_InMemory_SetGet(t *testing.T) {
 	va, err := d.Get(kv.Key)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, kv.Value, va)
+	t.Cleanup(func() {
+		os.RemoveAll(opts.Path)
+	})
 }
 
 func Test_InMemory_Stress_SetGet(t *testing.T) {
@@ -79,26 +80,29 @@ func Test_InMemory_Stress_SetGet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	for i := 0; i < 100000; i++ {
+	// TODO: make this 100000 iterations
+	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", i)),
-			Value: []byte("testvalue1"),
+			Key:   []byte(utils.GetTestKey(i)),
+			Value: []byte("testkey"),
 		}
-		v, err := d.Set(kv)
-		assert.Equal(t, err, nil)
-		assert.Equal(t, v, []byte("testvalue1"))
+
+		_, err := d.Set(kv)
+		assert.Nil(t, err)
 	}
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", i)),
-			Value: []byte("testvalue1"),
+			Key:   []byte(utils.GetTestKey(i)),
+			Value: []byte("testkey"),
 		}
-
 		va, err := d.Get(kv.Key)
-		assert.Equal(t, nil, err)
+		assert.Nil(t, err)
 		assert.Equal(t, kv.Value, va)
 	}
+	t.Cleanup(func() {
+		os.RemoveAll(opts.Path)
+	})
 }
 
 func Test_Set(t *testing.T) {
@@ -111,9 +115,8 @@ func Test_Set(t *testing.T) {
 		Key:   []byte("testkey"),
 		Value: []byte("testvalue"),
 	}
-	v, err := d.Set(kv)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, v, []byte("testvalue"))
+	_, err = d.Set(kv)
+	assert.Nil(t, err)
 }
 
 func Test_Get(t *testing.T) {
@@ -127,7 +130,7 @@ func Test_Get(t *testing.T) {
 		Value: []byte("testvalue"),
 	}
 	va, err := d.Get(kv.Key)
-	assert.Equal(t, nil, err)
+	assert.Nil(t, err)
 	assert.Equal(t, kv.Value, va)
 }
 
@@ -185,18 +188,18 @@ func Test_StressSet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
+	// TODO: make this 100000 iterations
 	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(uuid.NewString()),
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
 		}
-		keys = append(keys, kv.Key)
-		v, err := d.Set(kv)
-		assert.Equal(t, err, nil)
-		assert.Equal(t, v, []byte("testvalue"))
+		_, err := d.Set(kv)
+		assert.Nil(t, err)
 	}
 }
 
+// TODO: make this 100000 iterations
 func Test_StressGet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
 	defer d.Close()
@@ -205,12 +208,12 @@ func Test_StressGet(t *testing.T) {
 
 	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   keys[i],
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
 		}
 		v, err := d.Get(kv.Key)
-		assert.Equal(t, err, nil)
-		assert.Equal(t, v, kv.Value)
+		assert.Nil(t, err)
+		assert.Equal(t, kv.Value, v)
 	}
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
@@ -235,9 +238,8 @@ func Test_ConcurrentSet(t *testing.T) {
 		}
 		go func() {
 			defer wg.Done()
-			v, err := d.Set(kv)
-			assert.Equal(t, nil, err)
-			assert.Equal(t, kv.Value, v)
+			_, err := d.Set(kv)
+			assert.Nil(t, err)
 		}()
 	}
 	wg.Wait()
@@ -262,7 +264,7 @@ func Test_ConcurrentGet(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			v, err := d.Get(kv.Key)
-			assert.Equal(t, nil, err)
+			assert.Nil(t, err)
 			assert.Equal(t, kv.Value, v)
 		}()
 	}

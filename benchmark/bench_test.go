@@ -49,14 +49,10 @@ func set(b *testing.B) {
 	}
 }
 
-func GetTestKey(i int) []byte {
-	return []byte(fmt.Sprintf("rosedb-test-key-%09d", i))
-}
-
 func get(b *testing.B) {
 	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(GetTestKey(i)),
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
 		}
 		_, err := db.Set(kv)
@@ -67,7 +63,7 @@ func get(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(GetTestKey(rand.Int())),
+			Key:   []byte(utils.GetTestKey(rand.Int())),
 			Value: []byte("testvalue"),
 		}
 		_, err := db.Get(kv.Key)

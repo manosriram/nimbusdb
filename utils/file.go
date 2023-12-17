@@ -4,12 +4,34 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+var (
+	lock    = sync.Mutex{}
+	randStr = rand.New(rand.NewSource(time.Now().Unix()))
+	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+)
+
+func GetTestKey(i int) []byte {
+	return []byte(fmt.Sprintf("nimbusdb_test_key_%09d", i))
+}
+
+func RandomValue(n int) []byte {
+	b := make([]byte, n)
+	for i := range b {
+		lock.Lock()
+		b[i] = letters[randStr.Intn(len(letters))]
+		lock.Unlock()
+	}
+	return []byte("nimbusdb_test_value_" + string(b))
+}
 
 func TimeUntilUnixNano(tstamp int64) time.Duration {
 	return time.Until(time.Unix(0, tstamp))
