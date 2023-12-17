@@ -144,6 +144,8 @@ func Test_Delete(t *testing.T) {
 	err = d.Delete(kv.Key)
 	assert.Equal(t, nil, err)
 
+	_, err = d.Get(kv.Key)
+	assert.Equal(t, err.Error(), nimbusdb.KEY_NOT_FOUND)
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
 	})
@@ -171,7 +173,7 @@ func Test_InMemory_Delete(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	va, err = d.Get(kv.Key)
-	// assert.Equal(t, kv.Value, nil)
+	assert.Equal(t, err.Error(), nimbusdb.KEY_NOT_FOUND)
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
 	})
