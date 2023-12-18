@@ -80,8 +80,7 @@ func Test_InMemory_Stress_SetGet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	// TODO: make this 100000 iterations
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testkey"),
@@ -91,7 +90,7 @@ func Test_InMemory_Stress_SetGet(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testkey"),
@@ -188,8 +187,7 @@ func Test_StressSet(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	// TODO: make this 100000 iterations
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
@@ -199,14 +197,13 @@ func Test_StressSet(t *testing.T) {
 	}
 }
 
-// TODO: make this 100000 iterations
 func Test_StressGet(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
 	defer d.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
@@ -233,7 +230,7 @@ func Test_ConcurrentSet(t *testing.T) {
 
 	for i := 0; i < numGoRoutines; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", i)),
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte(fmt.Sprintf("testvalue%d", i)),
 		}
 		go func() {
@@ -258,7 +255,7 @@ func Test_ConcurrentGet(t *testing.T) {
 
 	for i := 0; i < numGoRoutines; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", i)),
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte(fmt.Sprintf("testvalue%d", i)),
 		}
 		go func() {
@@ -284,13 +281,13 @@ func Test_ConcurrentDelete(t *testing.T) {
 
 	for i := 0; i < numGoRoutines; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", i)),
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte(fmt.Sprintf("testvalue%d", i)),
 		}
 		go func() {
 			defer wg.Done()
 			err := d.Delete(kv.Key)
-			assert.Equal(t, nil, err)
+			assert.Nil(t, err)
 
 			_, err = d.Get(kv.Key)
 			assert.Equal(t, nimbusdb.KEY_NOT_FOUND, err.Error())

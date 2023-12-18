@@ -1,3 +1,7 @@
+/*
+	block's filePath should be same for all the entries in it.
+*/
+
 package nimbusdb
 
 import (
@@ -39,8 +43,8 @@ const (
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
 
-	DatafileThreshold = 50
-	BlockSize         = 16 * KB
+	DatafileThreshold = 1 * MB
+	BlockSize         = 100
 )
 
 const (
@@ -66,6 +70,9 @@ const (
 	DELETED_FLAG_BYTE_VALUE  = byte(0x31)
 	DELETED_FLAG_SET_VALUE   = byte(0x01)
 	DELETED_FLAG_UNSET_VALUE = byte(0x00)
+
+	LRU_SIZE = 50
+	LRU_TTL  = 24 * time.Hour
 )
 
 var (
@@ -94,15 +101,16 @@ type KeyDirValue struct {
 }
 
 type Db struct {
-	dirPath               string
-	mu                    sync.RWMutex
-	dataFilePath          string
-	activeDataFilePointer *os.File
-	activeDataFile        string
-	lastOffset            atomic.Int64
-	keyDir                *BTree
-	opts                  *Options
-	lru                   *expirable.LRU[int64, *Block]
+	dirPath                  string
+	mu                       sync.RWMutex
+	dataFilePath             string
+	activeDataFilePointer    *os.File
+	inActiveDataFilePointers *sync.Map
+	activeDataFile           string
+	lastOffset               atomic.Int64
+	keyDir                   *BTree
+	opts                     *Options
+	lru                      *expirable.LRU[int64, *Block]
 
 	currentBlockOffset atomic.Int64
 	currentBlockNumber atomic.Int64
@@ -116,7 +124,8 @@ func NewDb(dirPath string) *Db {
 			tree:         btree.New(BTreeDegree),
 			blockOffsets: off,
 		},
-		lru: expirable.NewLRU[int64, *Block](50, nil, 24*time.Hour),
+		lru:                      expirable.NewLRU[int64, *Block](LRU_SIZE, nil, LRU_TTL),
+		inActiveDataFilePointers: &sync.Map{},
 	}
 
 	return db
@@ -202,7 +211,7 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 
 	var v *KeyValueEntry
 	block := db.keyDir.blockOffsets[kv.blockNumber]
-	data, err := db.getKeyValueEntryFromOffsetViaFilePath(block.startOffset, block.endOffset-block.startOffset, kv.path)
+	data, err := db.getKeyValueEntryFromOffsetViaFilePath(block.startOffset, block.endOffset-block.startOffset, block.filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -587,6 +596,9 @@ func (db *Db) deleteKey(key []byte) error {
 	defer db.mu.Unlock()
 
 	v := db.keyDir.Get(key)
+	if v == nil {
+		return errors.New(KEY_NOT_FOUND)
+	}
 
 	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
 	f, err := os.OpenFile(a, os.O_WRONLY, 0644)
