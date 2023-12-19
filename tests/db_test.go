@@ -27,7 +27,7 @@ func TestDbOpen(t *testing.T) {
 	assert.NotEqual(t, d, nil)
 }
 
-func Test_InMemory_SetGet_With_Expiry(t *testing.T) {
+func Test_InMemory_SetGet_With_TTL(t *testing.T) {
 	d, err := nimbusdb.Open(opts)
 	defer d.Close()
 	assert.Equal(t, err, nil)
@@ -208,6 +208,7 @@ func Test_StressGet(t *testing.T) {
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
 		}
+		// fmt.Println("ok ", i)
 		v, err := d.Get(kv.Key)
 		assert.Nil(t, err)
 		assert.Equal(t, kv.Value, v)

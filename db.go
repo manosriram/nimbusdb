@@ -44,7 +44,7 @@ const (
 	DefaultDataDir                      = "nimbusdb"
 
 	DatafileThreshold = 1 * MB
-	BlockSize         = 100
+	BlockSize         = 10 * KB
 )
 
 const (
@@ -170,18 +170,22 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		return nil, errors.New(KEY_VALUE_SIZE_EXCEEDED)
 	}
 
-	// exists := db.keyDir.Get(key)
-	// if exists != nil {
-	// db.keyDir.Delete(key)
-	// }
-
-	if db.currentBlockOffset.Load()+kdValue.size < BlockSize {
-		kdValue.blockNumber = db.currentBlockNumber.Load()
-		db.currentBlockOffset.Add(kdValue.size)
-	} else {
+	block := db.keyDir.blockOffsets[kdValue.blockNumber]
+	blockPath := strings.Split(utils.GetFilenameWithoutExtension(block.filePath), ".")[0]
+	if kdValue.path != blockPath {
 		db.currentBlockNumber.Add(1)
+		db.currentBlockOffset.Store(0)
+
 		kdValue.blockNumber = db.currentBlockNumber.Load()
-		db.currentBlockOffset.Store(kdValue.size)
+	} else {
+		if db.currentBlockOffset.Load()+kdValue.size <= BlockSize {
+			kdValue.blockNumber = db.currentBlockNumber.Load()
+			db.currentBlockOffset.Add(kdValue.size)
+		} else {
+			db.currentBlockNumber.Add(1)
+			kdValue.blockNumber = db.currentBlockNumber.Load()
+			db.currentBlockOffset.Store(kdValue.size)
+		}
 	}
 
 	db.keyDir.Set(key, kdValue)
@@ -204,6 +208,7 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 		cacheBlock = cachedBlock
 		for _, entry := range cacheBlock.entries {
 			if bytes.Compare(key, entry.k) == 0 {
+				fmt.Println("cache hit")
 				return entry, nil
 			}
 		}
