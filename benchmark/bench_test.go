@@ -52,7 +52,7 @@ func set(b *testing.B) {
 func get(b *testing.B) {
 	for i := 0; i < 10000; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", rand.Int())),
+			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
 		}
 		_, err := db.Set(kv)
@@ -63,7 +63,7 @@ func get(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", rand.Int())),
+			Key:   []byte(utils.GetTestKey(rand.Int())),
 			Value: []byte("testvalue"),
 		}
 		_, err := db.Get(kv.Key)
