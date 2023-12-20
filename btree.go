@@ -8,9 +8,16 @@ import (
 	"github.com/manosriram/nimbusdb/utils"
 )
 
+type BlockOffsetPair struct {
+	startOffset int64
+	endOffset   int64
+	filePath    string
+}
+
 type BTree struct {
-	tree *btree.BTree
-	mu   sync.RWMutex
+	tree         *btree.BTree
+	blockOffsets map[int64]BlockOffsetPair
+	mu           sync.RWMutex
 }
 
 type item struct {
@@ -24,17 +31,28 @@ func (it item) Less(i btree.Item) bool {
 
 func (b *BTree) Get(key []byte) *KeyDirValue {
 	i := b.tree.Get(&item{key: key})
-	if i != nil {
-		return &i.(*item).v
+	if i == nil {
+		return nil
 	}
-	return nil
+	return &i.(*item).v
 }
 
 func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
 	i := b.tree.ReplaceOrInsert(&item{key: key, v: value})
+	y, ok := b.blockOffsets[value.blockNumber]
+	if !ok {
+		y.startOffset = value.offset
+		y.endOffset = value.offset + value.size
+		y.filePath = value.path
+		b.blockOffsets[value.blockNumber] = y
+	} else {
+		y.endOffset = value.offset + value.size
+		b.blockOffsets[value.blockNumber] = y
+	}
 	if i != nil {
 		return &i.(*item).v
 	}
+
 	return nil
 }
 
@@ -54,9 +72,9 @@ func (b *BTree) List() []*KeyValuePair {
 	var pairs []*KeyValuePair
 	b.tree.Ascend(func(it btree.Item) bool {
 		pairs = append(pairs, &KeyValuePair{
-			Key:       it.(*item).key,
-			Value:     it.(*item).v,
-			ExpiresIn: utils.TimeUntilUnixNano(it.(*item).v.tstamp),
+			Key:   it.(*item).key,
+			Value: it.(*item).v,
+			Ttl:   utils.TimeUntilUnixNano(it.(*item).v.tstamp),
 		})
 		return true
 	})
