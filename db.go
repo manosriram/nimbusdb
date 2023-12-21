@@ -43,6 +43,9 @@ const (
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
 
+	// DatafileThreshold = 500
+	// BlockSize         = 80
+
 	DatafileThreshold = 1 * MB
 	BlockSize         = 32 * KB
 )
@@ -97,7 +100,6 @@ type KeyDirValue struct {
 	size        int64
 	path        string
 	tstamp      int64
-	B           int64
 }
 
 type Db struct {
@@ -111,24 +113,29 @@ type Db struct {
 	keyDir                   *BTree
 	opts                     *Options
 	lru                      *expirable.LRU[int64, *Block]
+	segments                 map[string]*Segment
 
 	currentBlockOffset atomic.Int64
 	currentBlockNumber atomic.Int64
 }
 
 func NewDb(dirPath string) *Db {
-	off := make(map[int64]BlockOffsetPair)
+	segments := make(map[string]*Segment)
 	db := &Db{
 		dirPath: dirPath,
 		keyDir: &BTree{
-			tree:         btree.New(BTreeDegree),
-			blockOffsets: off,
+			tree: btree.New(BTreeDegree),
 		},
 		lru:                      expirable.NewLRU[int64, *Block](LRU_SIZE, nil, LRU_TTL),
+		segments:                 segments,
 		inActiveDataFilePointers: &sync.Map{},
 	}
 
 	return db
+}
+
+func (db *Db) setSegment(path string, segment *Segment) {
+	db.segments[path] = segment
 }
 
 func (db *Db) setLastOffset(v int64) {
@@ -161,6 +168,25 @@ func (db *Db) setActiveDataFile(activeDataFile string) error {
 	return nil
 }
 
+func (db *Db) getSegmentFilePointerFromPath(path string) (*os.File, error) {
+	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", path))
+	f, err := os.OpenFile(a, os.O_RDONLY, 0644)
+	if err != nil {
+		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", path))
+		f, err = os.OpenFile(b, os.O_RDONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return f, nil
+}
+
+type BlockOffsetPair struct {
+	startOffset int64
+	endOffset   int64
+	filePath    string
+}
+
 func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 	if len(key) == 0 || kdValue.offset < 0 {
 		return nil, nil
@@ -170,31 +196,50 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		return nil, errors.New(KEY_VALUE_SIZE_EXCEEDED)
 	}
 
-	block, ok := db.keyDir.blockOffsets[db.currentBlockNumber.Load()]
+	segment, ok := db.segments[kdValue.path]
 	if !ok {
-		db.keyDir.blockOffsets[kdValue.blockNumber] = BlockOffsetPair{
-			startOffset: 0,
-			endOffset:   0,
-			filePath:    kdValue.path,
+		newSegment := &Segment{
+			blocks: map[int64]*BlockOffsetPair{
+				0: {startOffset: kdValue.offset,
+					endOffset: kdValue.offset + kdValue.size,
+					filePath:  kdValue.path,
+				},
+			},
+			path:               kdValue.path,
+			currentBlockNumber: 0,
+			currentBlockOffset: 0,
 		}
-	}
-	if kdValue.path != block.filePath {
-		db.currentBlockNumber.Add(1)
-		db.currentBlockOffset.Store(0)
 
-		kdValue.blockNumber = db.currentBlockNumber.Load()
-	} else {
-		if db.currentBlockOffset.Load()+kdValue.size <= BlockSize {
-			kdValue.blockNumber = db.currentBlockNumber.Load()
-			db.currentBlockOffset.Add(kdValue.size)
-		} else {
-			db.currentBlockNumber.Add(1)
-			kdValue.blockNumber = db.currentBlockNumber.Load()
-			db.currentBlockOffset.Store(kdValue.size)
+		fp, err := db.getSegmentFilePointerFromPath(kdValue.path)
+		if err != nil {
+			return nil, err
 		}
+		newSegment.fp = fp
+		newSegment.closed = false
+
+		db.setSegment(kdValue.path, newSegment)
+
+	} else {
+		segment.blocks[segment.currentBlockNumber].endOffset = kdValue.offset + kdValue.size
+
+		if segment.currentBlockOffset+kdValue.size <= BlockSize {
+			kdValue.blockNumber = segment.currentBlockNumber
+			segment.currentBlockOffset += kdValue.size
+		} else {
+			segment.currentBlockNumber += 1
+			segment.blocks[segment.currentBlockNumber] = &BlockOffsetPair{
+				startOffset: kdValue.offset,
+				endOffset:   kdValue.offset + kdValue.size,
+				filePath:    kdValue.path,
+			}
+			segment.currentBlockOffset = kdValue.size
+			kdValue.blockNumber = segment.currentBlockNumber
+		}
+		db.setSegment(kdValue.path, segment)
 	}
 
 	db.keyDir.Set(key, kdValue)
+
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
 	db.lru.Remove(db.currentBlockNumber.Load())
 
@@ -222,7 +267,7 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	}
 
 	var v *KeyValueEntry
-	block := db.keyDir.blockOffsets[kv.blockNumber]
+	block, ok := db.segments[kv.path].blocks[kv.blockNumber]
 	data, err := db.getKeyValueEntryFromOffsetViaFilePath(block.startOffset, block.endOffset-block.startOffset, block.filePath)
 	if err != nil {
 		return nil, err
@@ -516,6 +561,9 @@ func (db *Db) Close() error {
 	if db.activeDataFilePointer != nil {
 		err := db.activeDataFilePointer.Close()
 		return err
+	}
+	for _, v := range db.segments {
+		v.fp.Close()
 	}
 	return nil
 }
