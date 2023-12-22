@@ -4,6 +4,8 @@ import (
 	"github.com/manosriram/nimbusdb/utils"
 )
 
+// KeyValueEntry is the raw and complete uncompressed data existing on the disk.
+// KeyValueEntry is stored in Blocks in cache for faster reads.
 type KeyValueEntry struct {
 	deleted     byte
 	blockNumber int64
@@ -17,6 +19,8 @@ type KeyValueEntry struct {
 	fileID      string
 }
 
+// Block represents a single block of disk memory. Default size is 32KB.
+// Each Segment is a collection of blocks; Each block is a collection of KeyValueEntries.
 type Block struct {
 	entries     []*KeyValueEntry
 	blockNumber int64

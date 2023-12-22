@@ -544,6 +544,8 @@ func (db *Db) createActiveDatafile(dirPath string) error {
 	return nil
 }
 
+// Closes the database. Closes the file pointer used to read/write the activeDataFile.
+// Closes all file inactiveDataFile pointers and marks them as closed.
 func (db *Db) Close() error {
 	if db.activeDataFilePointer != nil {
 		err := db.activeDataFilePointer.Close()
@@ -653,6 +655,8 @@ func (db *Db) deleteKey(key []byte) error {
 	return nil
 }
 
+// Gets a key-value pair.
+// Returns the value if the key exists and error if any.
 func (db *Db) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -664,6 +668,8 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 	return v.v, nil
 }
 
+// Sets a key-value pair.
+// Returns the value if set succeeds, else returns an error.
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 
 	intKSz := int64(len(kv.Key))
@@ -701,6 +707,8 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	return kv.Value, err
 }
 
+// Deletes a key-value pair.
+// Returns error if any.
 func (db *Db) Delete(key []byte) error {
 	err := db.deleteKey(key)
 	return err
@@ -736,6 +744,8 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	return nil
 }
 
+// Syncs the database. Will remove all expired/deleted keys from disk.
+// Since items are removed, disk usage will reduce.
 func (db *Db) Sync() error {
 	err := filepath.WalkDir(db.dirPath, db.walk)
 	if err != nil {

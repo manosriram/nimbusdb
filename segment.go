@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 )
 
+// Segment represents an entire file. It is divided into Blocks.
+// Each Segment is a collection of Blocks of size 32KB. A file pointer is kept opened for reading purposes.
+// closed represents the state of the Segment's file pointer.
 type Segment struct {
 	closed             bool
 	currentBlockNumber int64
@@ -14,6 +17,7 @@ type Segment struct {
 	fp                 *os.File
 }
 
+// BlockOffsetPair contains metadata about the Block. The start and ending offsets of the Block, and the path.
 type BlockOffsetPair struct {
 	startOffset int64
 	endOffset   int64
