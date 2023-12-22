@@ -26,15 +26,6 @@ type Block struct {
 	blockOffset int64
 }
 
-type Segment struct {
-	path               string
-	fp                 *os.File
-	closed             bool
-	blocks             map[int64]*BlockOffsetPair
-	currentBlockNumber int64
-	currentBlockOffset int64
-}
-
 func (s *KeyValueEntry) StaticChunkSize() int {
 	return StaticChunkSize + len(s.k) + len(s.v)
 }

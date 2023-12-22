@@ -39,9 +39,6 @@ const (
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
 
-	// DatafileThreshold = 100
-	// BlockSize         = 70
-
 	DatafileThreshold = 1 * MB
 	BlockSize         = 32 * KB
 )
@@ -65,6 +62,7 @@ const (
 	KEY_NOT_FOUND             = "key expired or does not exist"
 	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"
 	OFFSET_EXCEEDED_FILE_SIZE = "offset exceeded file size"
+	CANNOT_READ_FILE          = "error reading file"
 
 	DELETED_FLAG_BYTE_VALUE  = byte(0x31)
 	DELETED_FLAG_SET_VALUE   = byte(0x01)
@@ -130,26 +128,6 @@ func NewDb(dirPath string) *Db {
 	return db
 }
 
-func (db *Db) getSegmentBlock(path string, blockNumber int64) (*BlockOffsetPair, error) {
-	segment, ok := db.segments[path]
-	if !ok {
-		return nil, errors.New("Error reading file")
-	}
-	block, ok := segment.blocks[blockNumber]
-	if !ok {
-		return nil, errors.New("Error reading file")
-	}
-	return block, nil
-}
-
-func (db *Db) getSegment(path string) *Segment {
-	return db.segments[path]
-}
-
-func (db *Db) setSegment(path string, segment *Segment) {
-	db.segments[path] = segment
-}
-
 func (db *Db) setLastOffset(v int64) {
 	db.lastOffset.Store(v)
 }
@@ -185,15 +163,6 @@ func (db *Db) setActiveDataFile(activeDataFile string) error {
 	db.activeDataFile = activeDataFile
 	db.activeDataFilePointer = f
 	return nil
-}
-
-func (db *Db) getSegmentFilePointerFromPath(keyDirPath string) (*os.File, error) {
-	path := filepath.Join(db.dirPath, keyDirPath)
-	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
 }
 
 type BlockOffsetPair struct {
@@ -281,7 +250,10 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 
 	var v *KeyValueEntry
 	segment := db.segments[kv.path]
-	block, ok := segment.blocks[kv.blockNumber]
+	block, ok := db.getSegmentBlock(kv.path, kv.blockNumber)
+	if !ok {
+		return nil, errors.New(CANNOT_READ_FILE)
+	}
 	data, err := db.getKeyValueEntryFromOffsetViaFilePath(segment.path)
 	if err != nil {
 		return nil, err
@@ -549,14 +521,13 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 			newPath := filepath.Join(dirPath, inactiveName)
 			os.Rename(oldPath, newPath)
 
-			// db.segments[file.Name()].path = newPath
 			fp, err := db.getSegmentFilePointerFromPath(inactiveName)
 			if err != nil {
 				return err
 			}
-			db.segments[inactiveName] = db.segments[file.Name()]
-			db.segments[inactiveName].path = inactiveName
-			db.segments[inactiveName].fp = fp
+			db.setSegment(inactiveName, db.getSegment(file.Name()))
+			db.setSegmentPath(inactiveName, inactiveName)
+			db.setSegmentFp(inactiveName, fp)
 		}
 	}
 
@@ -577,6 +548,7 @@ func (db *Db) Close() error {
 	for _, segment := range db.segments {
 		if !segment.closed {
 			segment.fp.Close()
+			segment.closed = true
 		}
 	}
 	return nil
