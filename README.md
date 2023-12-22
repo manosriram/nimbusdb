@@ -83,7 +83,7 @@ if err != nil {
 #### Delete
 
 ```go
-value, err := d.Get([]byte("key"))
+value, err := d.Delete([]byte("key"))
 if err != nil {
   // handle error
 }
