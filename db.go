@@ -138,7 +138,7 @@ func (db *Db) setLastOffset(v int64) {
 	db.lastOffset.Store(v)
 }
 
-func (db *Db) LastOffset() int64 {
+func (db *Db) getLastOffset() int64 {
 	return db.lastOffset.Load()
 }
 
@@ -496,7 +496,7 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 	return nil
 }
 
-func (db *Db) CreateInactiveDatafile(dirPath string) error {
+func (db *Db) createInactiveDatafile(dirPath string) error {
 	file, err := os.CreateTemp(dirPath, TempInactiveDataFilePattern)
 	db.setActiveDataFile(file.Name())
 	db.setLastOffset(0)
@@ -506,7 +506,7 @@ func (db *Db) CreateInactiveDatafile(dirPath string) error {
 	return nil
 }
 
-func (db *Db) CreateActiveDatafile(dirPath string) error {
+func (db *Db) createActiveDatafile(dirPath string) error {
 	defer utils.Recover()
 
 	dir, err := os.ReadDir(dirPath)
@@ -583,7 +583,7 @@ func Open(opts *Options) (*Db, error) {
 
 	// Empty path, starting new
 	if len(dir) == 0 {
-		err = db.CreateActiveDatafile(dirPath)
+		err = db.createActiveDatafile(dirPath)
 		if err != nil {
 			return nil, err
 		}
@@ -614,7 +614,7 @@ func (db *Db) All() []*KeyValuePair {
 	return db.keyDir.List()
 }
 
-func (db *Db) LimitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Options) {
+func (db *Db) limitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Options) {
 	var sz os.FileInfo
 	var err error
 	f, err := db.getActiveDataFilePointer()
@@ -626,10 +626,10 @@ func (db *Db) LimitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Op
 
 	if size+newKeyValueEntry.size > DatafileThreshold {
 		if opts.IsMerge {
-			db.CreateInactiveDatafile(db.dirPath)
+			db.createInactiveDatafile(db.dirPath)
 			os.Remove(opts.MergeFilePath)
 		} else {
-			db.CreateActiveDatafile(db.dirPath)
+			db.createActiveDatafile(db.dirPath)
 			newKeyValueEntry.offset = 0
 		}
 	}
@@ -671,7 +671,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 
 	newKeyValueEntry := NewKeyValueEntry(
 		DELETED_FLAG_UNSET_VALUE,
-		db.LastOffset(),
+		db.getLastOffset(),
 		int64(len(kv.Key)),
 		int64(len(utils.Encode(kv.Value))),
 		int64(StaticChunkSize+intKSz+intVSz),
@@ -686,8 +686,8 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 
 	db.mu.Lock()
 	defer db.mu.Unlock()
-	db.LimitDatafileToThreshold(newKeyValueEntry, &Options{})
-	err := db.WriteKeyValueEntry(newKeyValueEntry)
+	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
+	err := db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -724,11 +724,11 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	}
 
 	for _, keyValueEntry := range keyValueEntries {
-		db.LimitDatafileToThreshold(keyValueEntry, &Options{
+		db.limitDatafileToThreshold(keyValueEntry, &Options{
 			IsMerge:       true,
 			MergeFilePath: path,
 		})
-		err := db.WriteKeyValueEntry(keyValueEntry)
+		err := db.writeKeyValueEntry(keyValueEntry)
 		if err != nil {
 			return err
 		}
