@@ -6,12 +6,12 @@ import (
 )
 
 type Segment struct {
-	path               string
-	fp                 *os.File
 	closed             bool
-	blocks             map[int64]*BlockOffsetPair
 	currentBlockNumber int64
 	currentBlockOffset int64
+	path               string
+	blocks             map[int64]*BlockOffsetPair
+	fp                 *os.File
 }
 
 func (db *Db) getSegmentBlock(path string, blockNumber int64) (*BlockOffsetPair, bool) {
@@ -30,6 +30,14 @@ func (db *Db) getSegment(path string) *Segment {
 	return db.segments[path]
 }
 
+func (db *Db) getSegmentBlockOffset(path string) int64 {
+	return db.segments[path].currentBlockOffset
+}
+
+func (db *Db) getSegmentBlockNumber(path string) int64 {
+	return db.segments[path].currentBlockNumber
+}
+
 func (db *Db) setSegment(path string, segment *Segment) {
 	db.segments[path] = segment
 }
@@ -43,6 +51,18 @@ func (db *Db) setSegmentPath(segmentPath string, path string) {
 func (db *Db) setSegmentFp(path string, fp *os.File) {
 	segment := db.getSegment(path)
 	segment.fp = fp
+	db.setSegment(path, segment)
+}
+
+func (db *Db) setSegmentBlockNumber(path string, blockNumber int64) {
+	segment := db.getSegment(path)
+	segment.currentBlockNumber = blockNumber
+	db.setSegment(path, segment)
+}
+
+func (db *Db) setSegmentBlockOffset(path string, blockOffset int64) {
+	segment := db.getSegment(path)
+	segment.currentBlockOffset = blockOffset
 	db.setSegment(path, segment)
 }
 

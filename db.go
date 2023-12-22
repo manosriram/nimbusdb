@@ -98,19 +98,16 @@ type KeyDirValue struct {
 
 type Db struct {
 	dirPath                  string
-	mu                       sync.RWMutex
 	dataFilePath             string
+	activeDataFile           string
 	activeDataFilePointer    *os.File
 	inActiveDataFilePointers *sync.Map
-	activeDataFile           string
-	lastOffset               atomic.Int64
 	keyDir                   *BTree
 	opts                     *Options
-	lru                      *expirable.LRU[int64, *Block]
+	lastOffset               atomic.Int64
+	mu                       sync.RWMutex
 	segments                 map[string]*Segment
-
-	currentBlockOffset atomic.Int64
-	currentBlockNumber atomic.Int64
+	lru                      *expirable.LRU[int64, *Block]
 }
 
 func NewDb(dirPath string) *Db {
@@ -207,7 +204,7 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 
 		if segment.currentBlockOffset+kdValue.size <= BlockSize {
 			kdValue.blockNumber = segment.currentBlockNumber
-			segment.currentBlockOffset += kdValue.size
+			db.setSegmentBlockOffset(kdValue.path, db.getSegmentBlockOffset(kdValue.path)+kdValue.size)
 		} else {
 			segment.currentBlockNumber += 1
 			segment.blocks[segment.currentBlockNumber] = &BlockOffsetPair{
@@ -215,15 +212,15 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 				endOffset:   kdValue.offset + kdValue.size,
 				filePath:    kdValue.path,
 			}
-			segment.currentBlockOffset = kdValue.size
 			kdValue.blockNumber = segment.currentBlockNumber
+			db.setSegmentBlockOffset(kdValue.path, kdValue.size)
 		}
 		db.setSegment(kdValue.path, segment)
 	}
 
 	db.keyDir.Set(key, kdValue)
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
-	db.lru.Remove(db.currentBlockNumber.Load())
+	db.lru.Remove(db.getSegmentBlockNumber(kdValue.path))
 
 	return kdValue, nil
 }

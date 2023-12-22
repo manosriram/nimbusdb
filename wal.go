@@ -10,7 +10,6 @@ import (
 type KeyValueEntry struct {
 	deleted     byte
 	blockNumber int64
-	fileID      string
 	offset      int64
 	size        int64 // Equals StaticChunkSize + keysize + valuesize
 	tstamp      int64
@@ -18,6 +17,7 @@ type KeyValueEntry struct {
 	vsz         int64
 	k           []byte
 	v           []byte
+	fileID      string
 }
 
 type Block struct {
