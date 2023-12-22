@@ -14,6 +14,12 @@ type Segment struct {
 	fp                 *os.File
 }
 
+type BlockOffsetPair struct {
+	startOffset int64
+	endOffset   int64
+	filePath    string
+}
+
 func (db *Db) getSegmentBlock(path string, blockNumber int64) (*BlockOffsetPair, bool) {
 	segment, ok := db.segments[path]
 	if !ok {
@@ -63,6 +69,12 @@ func (db *Db) setSegmentBlockNumber(path string, blockNumber int64) {
 func (db *Db) setSegmentBlockOffset(path string, blockOffset int64) {
 	segment := db.getSegment(path)
 	segment.currentBlockOffset = blockOffset
+	db.setSegment(path, segment)
+}
+
+func (db *Db) setSegmentBlock(path string, blockNumber int64, block *BlockOffsetPair) {
+	segment := db.getSegment(path)
+	segment.blocks[blockNumber] = block
 	db.setSegment(path, segment)
 }
 

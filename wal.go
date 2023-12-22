@@ -26,6 +26,17 @@ type Block struct {
 	blockOffset int64
 }
 
+func NewKeyValueEntry(deleted byte, offset, ksz, vsz, size int64, k, v []byte) *KeyValueEntry {
+	return &KeyValueEntry{
+		deleted: deleted,
+		ksz:     ksz,
+		vsz:     vsz,
+		size:    size,
+		k:       k,
+		v:       v,
+	}
+}
+
 func (s *KeyValueEntry) StaticChunkSize() int {
 	return StaticChunkSize + len(s.k) + len(s.v)
 }

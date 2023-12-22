@@ -96,6 +96,15 @@ type KeyDirValue struct {
 	tstamp      int64
 }
 
+func NewKeyDirValue(offset, size, tstamp int64, path string) *KeyDirValue {
+	return &KeyDirValue{
+		offset: offset,
+		size:   size,
+		tstamp: tstamp,
+		path:   path,
+	}
+}
+
 type Db struct {
 	dirPath                  string
 	dataFilePath             string
@@ -162,12 +171,6 @@ func (db *Db) setActiveDataFile(activeDataFile string) error {
 	return nil
 }
 
-type BlockOffsetPair struct {
-	startOffset int64
-	endOffset   int64
-	filePath    string
-}
-
 func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 	if len(key) == 0 || kdValue.offset < 0 {
 		return nil, nil
@@ -200,8 +203,12 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 
 		db.setSegment(kdValue.path, newSegment)
 	} else {
-		segment.blocks[segment.currentBlockNumber].endOffset = kdValue.offset + kdValue.size
-
+		segmentBlock, ok := db.getSegmentBlock(kdValue.path, segment.currentBlockNumber)
+		if !ok {
+			return nil, errors.New(CANNOT_READ_FILE)
+		}
+		segmentBlock.endOffset = kdValue.offset + kdValue.size
+		db.setSegmentBlock(kdValue.path, segment.currentBlockNumber, segmentBlock)
 		if segment.currentBlockOffset+kdValue.size <= BlockSize {
 			kdValue.blockNumber = segment.currentBlockNumber
 			db.setSegmentBlockOffset(kdValue.path, db.getSegmentBlockOffset(kdValue.path)+kdValue.size)
@@ -658,41 +665,35 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 }
 
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
 
 	intKSz := int64(len(kv.Key))
 	intVSz := int64(len(utils.Encode(kv.Value)))
 
-	newKeyValueEntry := &KeyValueEntry{
-		deleted: DELETED_FLAG_UNSET_VALUE,
-		ksz:     int64(len(kv.Key)),
-		vsz:     int64(len(utils.Encode(kv.Value))),
-		k:       kv.Key,
-		v:       utils.Encode(kv.Value),
-		size:    int64(StaticChunkSize + intKSz + intVSz),
-		offset:  db.LastOffset(),
-	}
+	newKeyValueEntry := NewKeyValueEntry(
+		DELETED_FLAG_UNSET_VALUE,
+		db.LastOffset(),
+		int64(len(kv.Key)),
+		int64(len(utils.Encode(kv.Value))),
+		int64(StaticChunkSize+intKSz+intVSz),
+		kv.Key,
+		utils.Encode(kv.Value),
+	)
 	if kv.Ttl > 0 {
 		newKeyValueEntry.tstamp = int64(time.Now().Add(kv.Ttl).UnixNano())
 	} else {
 		newKeyValueEntry.tstamp = int64(time.Now().Add(KEY_EXPIRES_IN_DEFAULT).UnixNano())
 	}
 
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	db.LimitDatafileToThreshold(newKeyValueEntry, &Options{})
 	err := db.WriteKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
 
-	kdValue := KeyDirValue{
-		offset: newKeyValueEntry.offset,
-		size:   newKeyValueEntry.size,
-		path:   utils.GetFilenameWithoutExtension(db.activeDataFile),
-		tstamp: newKeyValueEntry.tstamp,
-	}
-
-	_, err = db.setKeyDir(kv.Key, kdValue)
+	kdValue := NewKeyDirValue(newKeyValueEntry.offset, newKeyValueEntry.size, newKeyValueEntry.tstamp, utils.GetFilenameWithoutExtension(db.activeDataFile))
+	_, err = db.setKeyDir(kv.Key, *kdValue)
 	if err != nil {
 		return nil, err
 	}
