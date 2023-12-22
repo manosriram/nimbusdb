@@ -90,7 +90,7 @@ if err != nil {
 ```
 
 #### Sync
-This does the merge process. This can be a expensive operation, so it is better to run this periodically and whenever the traffic is low.
+This does the merge process. This can be an expensive operation, hence it is better to run this periodically and whenever the traffic is low.
 
 ```go
 err := d.Sync()
