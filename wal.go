@@ -1,16 +1,14 @@
 package nimbusdb
 
 import (
-	"os"
-	"time"
-
 	"github.com/manosriram/nimbusdb/utils"
 )
 
+// KeyValueEntry is the raw and complete uncompressed data existing on the disk.
+// KeyValueEntry is stored in Blocks in cache for faster reads.
 type KeyValueEntry struct {
 	deleted     byte
 	blockNumber int64
-	fileID      string
 	offset      int64
 	size        int64 // Equals StaticChunkSize + keysize + valuesize
 	tstamp      int64
@@ -18,12 +16,26 @@ type KeyValueEntry struct {
 	vsz         int64
 	k           []byte
 	v           []byte
+	fileID      string
 }
 
+// Block represents a single block of disk memory. Default size is 32KB.
+// Each Segment is a collection of blocks; Each block is a collection of KeyValueEntries.
 type Block struct {
 	entries     []*KeyValueEntry
 	blockNumber int64
 	blockOffset int64
+}
+
+func NewKeyValueEntry(deleted byte, offset, ksz, vsz, size int64, k, v []byte) *KeyValueEntry {
+	return &KeyValueEntry{
+		deleted: deleted,
+		ksz:     ksz,
+		vsz:     vsz,
+		size:    size,
+		k:       k,
+		v:       v,
+	}
 }
 
 func (s *KeyValueEntry) StaticChunkSize() int {
@@ -54,26 +66,11 @@ func (s *KeyValueEntry) ToByte() []byte {
 	return keyValueEntryInBytes
 }
 
-func (db *Db) WriteKeyValueEntry(keyValueEntry *KeyValueEntry) error {
+func (db *Db) writeKeyValueEntry(keyValueEntry *KeyValueEntry) error {
 	f, err := db.getActiveDataFilePointer()
 	if err != nil {
 		return err
 	}
 	_, err = f.Write(keyValueEntry.ToByte())
 	return err
-}
-
-func (db *Db) ExpireKey(offset int64) error {
-	f, err := os.OpenFile(db.activeDataFile, os.O_RDWR, 0644)
-	if err != nil {
-		return err
-	}
-
-	expireTstamp := time.Now().Add(-1 * time.Hour).UnixNano()
-	_, err = f.WriteAt(utils.Int64ToByte(expireTstamp), int64(offset))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

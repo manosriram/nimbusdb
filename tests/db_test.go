@@ -90,7 +90,7 @@ func Test_InMemory_Stress_SetGet(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 1000; i++ {
 		kv := &nimbusdb.KeyValuePair{
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testkey"),

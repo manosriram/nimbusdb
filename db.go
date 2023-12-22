@@ -1,7 +1,3 @@
-/*
-	block's filePath should be same for all the entries in it.
-*/
-
 package nimbusdb
 
 import (
@@ -61,11 +57,12 @@ const (
 )
 
 const (
-	KEY_EXPIRES_IN_DEFAULT = 24 * time.Hour
+	KEY_EXPIRES_IN_DEFAULT = 168 * time.Hour // 1 week
 
 	KEY_NOT_FOUND             = "key expired or does not exist"
 	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"
 	OFFSET_EXCEEDED_FILE_SIZE = "offset exceeded file size"
+	CANNOT_READ_FILE          = "error reading file"
 
 	DELETED_FLAG_BYTE_VALUE  = byte(0x31)
 	DELETED_FLAG_SET_VALUE   = byte(0x01)
@@ -97,34 +94,40 @@ type KeyDirValue struct {
 	size        int64
 	path        string
 	tstamp      int64
-	B           int64
+}
+
+func NewKeyDirValue(offset, size, tstamp int64, path string) *KeyDirValue {
+	return &KeyDirValue{
+		offset: offset,
+		size:   size,
+		tstamp: tstamp,
+		path:   path,
+	}
 }
 
 type Db struct {
 	dirPath                  string
-	mu                       sync.RWMutex
 	dataFilePath             string
+	activeDataFile           string
 	activeDataFilePointer    *os.File
 	inActiveDataFilePointers *sync.Map
-	activeDataFile           string
-	lastOffset               atomic.Int64
 	keyDir                   *BTree
 	opts                     *Options
+	lastOffset               atomic.Int64
+	mu                       sync.RWMutex
+	segments                 map[string]*Segment
 	lru                      *expirable.LRU[int64, *Block]
-
-	currentBlockOffset atomic.Int64
-	currentBlockNumber atomic.Int64
 }
 
 func NewDb(dirPath string) *Db {
-	off := make(map[int64]BlockOffsetPair)
+	segments := make(map[string]*Segment)
 	db := &Db{
 		dirPath: dirPath,
 		keyDir: &BTree{
-			tree:         btree.New(BTreeDegree),
-			blockOffsets: off,
+			tree: btree.New(BTreeDegree),
 		},
 		lru:                      expirable.NewLRU[int64, *Block](LRU_SIZE, nil, LRU_TTL),
+		segments:                 segments,
 		inActiveDataFilePointers: &sync.Map{},
 	}
 
@@ -135,7 +138,7 @@ func (db *Db) setLastOffset(v int64) {
 	db.lastOffset.Store(v)
 }
 
-func (db *Db) LastOffset() int64 {
+func (db *Db) getLastOffset() int64 {
 	return db.lastOffset.Load()
 }
 
@@ -146,8 +149,15 @@ func (db *Db) getActiveDataFilePointer() (*os.File, error) {
 	return db.activeDataFilePointer, nil
 }
 
+func (db *Db) closeActiveDataFilePointer() error {
+	if db.activeDataFilePointer != nil {
+		return db.activeDataFilePointer.Close()
+	}
+	return nil
+}
+
 func (db *Db) setActiveDataFile(activeDataFile string) error {
-	err := db.Close() // close existing active datafile
+	err := db.closeActiveDataFilePointer()
 	if err != nil {
 		return err
 	}
@@ -170,33 +180,54 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		return nil, errors.New(KEY_VALUE_SIZE_EXCEEDED)
 	}
 
-	block, ok := db.keyDir.blockOffsets[db.currentBlockNumber.Load()]
+	segment, ok := db.segments[kdValue.path]
 	if !ok {
-		db.keyDir.blockOffsets[kdValue.blockNumber] = BlockOffsetPair{
-			startOffset: 0,
-			endOffset:   0,
-			filePath:    kdValue.path,
+		newSegment := &Segment{
+			blocks: map[int64]*BlockOffsetPair{
+				0: {startOffset: kdValue.offset,
+					endOffset: kdValue.offset + kdValue.size,
+					filePath:  kdValue.path,
+				},
+			},
+			path:               kdValue.path,
+			currentBlockNumber: 0,
+			currentBlockOffset: 0,
 		}
-	}
-	if kdValue.path != block.filePath {
-		db.currentBlockNumber.Add(1)
-		db.currentBlockOffset.Store(0)
 
-		kdValue.blockNumber = db.currentBlockNumber.Load()
-	} else {
-		if db.currentBlockOffset.Load()+kdValue.size <= BlockSize {
-			kdValue.blockNumber = db.currentBlockNumber.Load()
-			db.currentBlockOffset.Add(kdValue.size)
-		} else {
-			db.currentBlockNumber.Add(1)
-			kdValue.blockNumber = db.currentBlockNumber.Load()
-			db.currentBlockOffset.Store(kdValue.size)
+		fp, err := db.getSegmentFilePointerFromPath(kdValue.path)
+		if err != nil {
+			return nil, err
 		}
+		newSegment.fp = fp
+		newSegment.closed = false
+
+		db.setSegment(kdValue.path, newSegment)
+	} else {
+		segmentBlock, ok := db.getSegmentBlock(kdValue.path, segment.currentBlockNumber)
+		if !ok {
+			return nil, errors.New(CANNOT_READ_FILE)
+		}
+		segmentBlock.endOffset = kdValue.offset + kdValue.size
+		db.setSegmentBlock(kdValue.path, segment.currentBlockNumber, segmentBlock)
+		if segment.currentBlockOffset+kdValue.size <= BlockSize {
+			kdValue.blockNumber = segment.currentBlockNumber
+			db.setSegmentBlockOffset(kdValue.path, db.getSegmentBlockOffset(kdValue.path)+kdValue.size)
+		} else {
+			segment.currentBlockNumber += 1
+			segment.blocks[segment.currentBlockNumber] = &BlockOffsetPair{
+				startOffset: kdValue.offset,
+				endOffset:   kdValue.offset + kdValue.size,
+				filePath:    kdValue.path,
+			}
+			kdValue.blockNumber = segment.currentBlockNumber
+			db.setSegmentBlockOffset(kdValue.path, kdValue.size)
+		}
+		db.setSegment(kdValue.path, segment)
 	}
 
 	db.keyDir.Set(key, kdValue)
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
-	db.lru.Remove(db.currentBlockNumber.Load())
+	db.lru.Remove(db.getSegmentBlockNumber(kdValue.path))
 
 	return kdValue, nil
 }
@@ -222,8 +253,12 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	}
 
 	var v *KeyValueEntry
-	block := db.keyDir.blockOffsets[kv.blockNumber]
-	data, err := db.getKeyValueEntryFromOffsetViaFilePath(block.startOffset, block.endOffset-block.startOffset, block.filePath)
+	segment := db.segments[kv.path]
+	block, ok := db.getSegmentBlock(kv.path, kv.blockNumber)
+	if !ok {
+		return nil, errors.New(CANNOT_READ_FILE)
+	}
+	data, err := db.getKeyValueEntryFromOffsetViaFilePath(segment.path)
 	if err != nil {
 		return nil, err
 	}
@@ -263,17 +298,13 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	return nil, errors.New(KEY_NOT_FOUND)
 }
 
-func (db *Db) getKeyValueEntryFromOffsetViaFilePath(offset int64, sz int64, path string) ([]byte, error) {
-	// TODO: improve dfile and idfile recognizing
+func (db *Db) getKeyValueEntryFromOffsetViaFilePath(keyDirPath string) ([]byte, error) {
+	// TODO: improve file handling here
 	var data []byte
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", path))
-	data, err := os.ReadFile(a)
+	path := filepath.Join(db.dirPath, keyDirPath)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", path))
-		data, err = os.ReadFile(b)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return data, nil
 }
@@ -332,17 +363,10 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*KeyValueEntry, error) {
 	defer utils.Recover()
 
-	// TODO: improve dfile and idfile recognizing
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", kdValue.path))
-	f, err := os.OpenFile(a, os.O_RDONLY, 0644)
+	f, err := db.getSegmentFilePointerFromPath(kdValue.path)
 	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", kdValue.path))
-		f, err = os.OpenFile(b, os.O_RDONLY, 0644)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
-	defer f.Close()
 
 	data := make([]byte, kdValue.size)
 	f.Seek(kdValue.offset, io.SeekCurrent)
@@ -410,7 +434,7 @@ func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, e
 				kdValue := KeyDirValue{
 					offset: keyValueEntry.offset,
 					size:   keyValueEntry.size,
-					path:   strings.Split(fileName, ".")[0],
+					path:   fileName,
 					tstamp: keyValueEntry.tstamp,
 				}
 				_, err := db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
@@ -448,7 +472,7 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 			keyValueEntry.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 			hasTimestampExpired := utils.HasTimestampExpired(keyValueEntry.tstamp)
 			if !hasTimestampExpired {
-				fileName := strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
+				fileName := utils.GetFilenameWithoutExtension(filePath)
 				kdValue := KeyDirValue{
 					offset: keyValueEntry.offset,
 					size:   keyValueEntry.size,
@@ -472,7 +496,7 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 	return nil
 }
 
-func (db *Db) CreateInactiveDatafile(dirPath string) error {
+func (db *Db) createInactiveDatafile(dirPath string) error {
 	file, err := os.CreateTemp(dirPath, TempInactiveDataFilePattern)
 	db.setActiveDataFile(file.Name())
 	db.setLastOffset(0)
@@ -482,7 +506,7 @@ func (db *Db) CreateInactiveDatafile(dirPath string) error {
 	return nil
 }
 
-func (db *Db) CreateActiveDatafile(dirPath string) error {
+func (db *Db) createActiveDatafile(dirPath string) error {
 	defer utils.Recover()
 
 	dir, err := os.ReadDir(dirPath)
@@ -500,6 +524,14 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 			oldPath := filepath.Join(dirPath, file.Name())
 			newPath := filepath.Join(dirPath, inactiveName)
 			os.Rename(oldPath, newPath)
+
+			fp, err := db.getSegmentFilePointerFromPath(inactiveName)
+			if err != nil {
+				return err
+			}
+			db.setSegment(inactiveName, db.getSegment(file.Name()))
+			db.setSegmentPath(inactiveName, inactiveName)
+			db.setSegmentFp(inactiveName, fp)
 		}
 	}
 
@@ -512,10 +544,18 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 	return nil
 }
 
+// Closes the database. Closes the file pointer used to read/write the activeDataFile.
+// Closes all file inactiveDataFile pointers and marks them as closed.
 func (db *Db) Close() error {
 	if db.activeDataFilePointer != nil {
 		err := db.activeDataFilePointer.Close()
 		return err
+	}
+	for _, segment := range db.segments {
+		if !segment.closed {
+			segment.fp.Close()
+			segment.closed = true
+		}
 	}
 	return nil
 }
@@ -545,7 +585,7 @@ func Open(opts *Options) (*Db, error) {
 
 	// Empty path, starting new
 	if len(dir) == 0 {
-		err = db.CreateActiveDatafile(dirPath)
+		err = db.createActiveDatafile(dirPath)
 		if err != nil {
 			return nil, err
 		}
@@ -576,7 +616,7 @@ func (db *Db) All() []*KeyValuePair {
 	return db.keyDir.List()
 }
 
-func (db *Db) LimitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Options) {
+func (db *Db) limitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Options) {
 	var sz os.FileInfo
 	var err error
 	f, err := db.getActiveDataFilePointer()
@@ -588,10 +628,10 @@ func (db *Db) LimitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Op
 
 	if size+newKeyValueEntry.size > DatafileThreshold {
 		if opts.IsMerge {
-			db.CreateInactiveDatafile(db.dirPath)
+			db.createInactiveDatafile(db.dirPath)
 			os.Remove(opts.MergeFilePath)
 		} else {
-			db.CreateActiveDatafile(db.dirPath)
+			db.createActiveDatafile(db.dirPath)
 			newKeyValueEntry.offset = 0
 		}
 	}
@@ -607,25 +647,16 @@ func (db *Db) deleteKey(key []byte) error {
 		return errors.New(KEY_NOT_FOUND)
 	}
 
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
-	f, err := os.OpenFile(a, os.O_WRONLY, 0644)
-	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", v.path))
-		f, err = os.OpenFile(b, os.O_WRONLY, 0644)
-		if err != nil {
-			return err
-		}
-	}
-	defer f.Close()
-
-	f.WriteAt([]byte{DELETED_FLAG_SET_VALUE}, v.offset)
-
+	f := db.segments[v.path]
+	f.fp.WriteAt([]byte{DELETED_FLAG_SET_VALUE}, v.offset)
 	db.lru.Remove(v.blockNumber)
 	db.keyDir.Delete(key)
 
 	return nil
 }
 
+// Gets a key-value pair.
+// Returns the value if the key exists and error if any.
 func (db *Db) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -637,42 +668,38 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 	return v.v, nil
 }
 
+// Sets a key-value pair.
+// Returns the value if set succeeds, else returns an error.
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
 
 	intKSz := int64(len(kv.Key))
 	intVSz := int64(len(utils.Encode(kv.Value)))
 
-	newKeyValueEntry := &KeyValueEntry{
-		deleted: DELETED_FLAG_UNSET_VALUE,
-		ksz:     int64(len(kv.Key)),
-		vsz:     int64(len(utils.Encode(kv.Value))),
-		k:       kv.Key,
-		v:       utils.Encode(kv.Value),
-		size:    int64(StaticChunkSize + intKSz + intVSz),
-		offset:  db.LastOffset(),
-	}
+	newKeyValueEntry := NewKeyValueEntry(
+		DELETED_FLAG_UNSET_VALUE,
+		db.getLastOffset(),
+		int64(len(kv.Key)),
+		int64(len(utils.Encode(kv.Value))),
+		int64(StaticChunkSize+intKSz+intVSz),
+		kv.Key,
+		utils.Encode(kv.Value),
+	)
 	if kv.Ttl > 0 {
 		newKeyValueEntry.tstamp = int64(time.Now().Add(kv.Ttl).UnixNano())
 	} else {
 		newKeyValueEntry.tstamp = int64(time.Now().Add(KEY_EXPIRES_IN_DEFAULT).UnixNano())
 	}
 
-	db.LimitDatafileToThreshold(newKeyValueEntry, &Options{})
-	err := db.WriteKeyValueEntry(newKeyValueEntry)
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
+	err := db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
 
-	kdValue := KeyDirValue{
-		offset: newKeyValueEntry.offset,
-		size:   newKeyValueEntry.size,
-		path:   strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
-		tstamp: newKeyValueEntry.tstamp,
-	}
-
-	_, err = db.setKeyDir(kv.Key, kdValue)
+	kdValue := NewKeyDirValue(newKeyValueEntry.offset, newKeyValueEntry.size, newKeyValueEntry.tstamp, utils.GetFilenameWithoutExtension(db.activeDataFile))
+	_, err = db.setKeyDir(kv.Key, *kdValue)
 	if err != nil {
 		return nil, err
 	}
@@ -680,6 +707,8 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	return kv.Value, err
 }
 
+// Deletes a key-value pair.
+// Returns error if any.
 func (db *Db) Delete(key []byte) error {
 	err := db.deleteKey(key)
 	return err
@@ -703,11 +732,11 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	}
 
 	for _, keyValueEntry := range keyValueEntries {
-		db.LimitDatafileToThreshold(keyValueEntry, &Options{
+		db.limitDatafileToThreshold(keyValueEntry, &Options{
 			IsMerge:       true,
 			MergeFilePath: path,
 		})
-		err := db.WriteKeyValueEntry(keyValueEntry)
+		err := db.writeKeyValueEntry(keyValueEntry)
 		if err != nil {
 			return err
 		}
@@ -715,6 +744,8 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	return nil
 }
 
+// Syncs the database. Will remove all expired/deleted keys from disk.
+// Since items are removed, disk usage will reduce.
 func (db *Db) Sync() error {
 	err := filepath.WalkDir(db.dirPath, db.walk)
 	if err != nil {
