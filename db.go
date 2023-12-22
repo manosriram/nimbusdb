@@ -57,7 +57,7 @@ const (
 )
 
 const (
-	KEY_EXPIRES_IN_DEFAULT = 24 * time.Hour
+	KEY_EXPIRES_IN_DEFAULT = 168 * time.Hour // 1 week
 
 	KEY_NOT_FOUND             = "key expired or does not exist"
 	NO_ACTIVE_FILE_OPENED     = "no file opened for writing"

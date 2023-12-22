@@ -56,8 +56,6 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-		} else if text == "stat" {
-			d.CreateActiveDatafile(DirPath)
 		} else if text == "sync" {
 			d.Sync()
 		}
