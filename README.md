@@ -100,7 +100,9 @@ if err != nil {
 ```
 
 ## Benchmarks
-![Screenshot 2023-12-23 at 3 46 13 AM](https://github.com/manosriram/nimbusdb/assets/38112857/6efdd4c8-6c9f-4655-9c4a-a1bcf3235b99)
+![Screenshot 2023-12-23 at 4 08 56 AM](https://github.com/manosriram/nimbusdb/assets/38112857/76720f68-ad16-44ee-a408-12b06e6c051a)
+
+
 
 
 [Progress Board](https://trello.com/b/2eDSLLb3/nimbusdb) | [Streams](https://youtube.com/playlist?list=PLJALjJgNSDVo5veOf2apgMIE1QgN7IEfk) | [godoc](https://pkg.go.dev/github.com/manosriram/nimbusdb)
