@@ -1,7 +1,3 @@
-/*
-	block's filePath should be same for all the entries in it.
-*/
-
 package nimbusdb
 
 import (
@@ -43,8 +39,8 @@ const (
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
 
-	// DatafileThreshold = 500
-	// BlockSize         = 80
+	// DatafileThreshold = 100
+	// BlockSize         = 70
 
 	DatafileThreshold = 1 * MB
 	BlockSize         = 32 * KB
@@ -134,6 +130,22 @@ func NewDb(dirPath string) *Db {
 	return db
 }
 
+func (db *Db) getSegmentBlock(path string, blockNumber int64) (*BlockOffsetPair, error) {
+	segment, ok := db.segments[path]
+	if !ok {
+		return nil, errors.New("Error reading file")
+	}
+	block, ok := segment.blocks[blockNumber]
+	if !ok {
+		return nil, errors.New("Error reading file")
+	}
+	return block, nil
+}
+
+func (db *Db) getSegment(path string) *Segment {
+	return db.segments[path]
+}
+
 func (db *Db) setSegment(path string, segment *Segment) {
 	db.segments[path] = segment
 }
@@ -153,8 +165,15 @@ func (db *Db) getActiveDataFilePointer() (*os.File, error) {
 	return db.activeDataFilePointer, nil
 }
 
+func (db *Db) closeActiveDataFilePointer() error {
+	if db.activeDataFilePointer != nil {
+		return db.activeDataFilePointer.Close()
+	}
+	return nil
+}
+
 func (db *Db) setActiveDataFile(activeDataFile string) error {
-	err := db.Close() // close existing active datafile
+	err := db.closeActiveDataFilePointer()
 	if err != nil {
 		return err
 	}
@@ -168,15 +187,11 @@ func (db *Db) setActiveDataFile(activeDataFile string) error {
 	return nil
 }
 
-func (db *Db) getSegmentFilePointerFromPath(path string) (*os.File, error) {
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", path))
-	f, err := os.OpenFile(a, os.O_RDONLY, 0644)
+func (db *Db) getSegmentFilePointerFromPath(keyDirPath string) (*os.File, error) {
+	path := filepath.Join(db.dirPath, keyDirPath)
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", path))
-		f, err = os.OpenFile(b, os.O_RDONLY, 0644)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return f, nil
 }
@@ -218,7 +233,6 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		newSegment.closed = false
 
 		db.setSegment(kdValue.path, newSegment)
-
 	} else {
 		segment.blocks[segment.currentBlockNumber].endOffset = kdValue.offset + kdValue.size
 
@@ -239,7 +253,6 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 	}
 
 	db.keyDir.Set(key, kdValue)
-
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
 	db.lru.Remove(db.currentBlockNumber.Load())
 
@@ -267,8 +280,9 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	}
 
 	var v *KeyValueEntry
-	block, ok := db.segments[kv.path].blocks[kv.blockNumber]
-	data, err := db.getKeyValueEntryFromOffsetViaFilePath(block.startOffset, block.endOffset-block.startOffset, block.filePath)
+	segment := db.segments[kv.path]
+	block, ok := segment.blocks[kv.blockNumber]
+	data, err := db.getKeyValueEntryFromOffsetViaFilePath(segment.path)
 	if err != nil {
 		return nil, err
 	}
@@ -308,17 +322,13 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	return nil, errors.New(KEY_NOT_FOUND)
 }
 
-func (db *Db) getKeyValueEntryFromOffsetViaFilePath(offset int64, sz int64, path string) ([]byte, error) {
-	// TODO: improve dfile and idfile recognizing
+func (db *Db) getKeyValueEntryFromOffsetViaFilePath(keyDirPath string) ([]byte, error) {
+	// TODO: improve file handling here
 	var data []byte
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", path))
-	data, err := os.ReadFile(a)
+	path := filepath.Join(db.dirPath, keyDirPath)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", path))
-		data, err = os.ReadFile(b)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return data, nil
 }
@@ -377,17 +387,10 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*KeyValueEntry, error) {
 	defer utils.Recover()
 
-	// TODO: improve dfile and idfile recognizing
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", kdValue.path))
-	f, err := os.OpenFile(a, os.O_RDONLY, 0644)
+	f, err := db.getSegmentFilePointerFromPath(kdValue.path)
 	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", kdValue.path))
-		f, err = os.OpenFile(b, os.O_RDONLY, 0644)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
-	defer f.Close()
 
 	data := make([]byte, kdValue.size)
 	f.Seek(kdValue.offset, io.SeekCurrent)
@@ -455,7 +458,7 @@ func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, e
 				kdValue := KeyDirValue{
 					offset: keyValueEntry.offset,
 					size:   keyValueEntry.size,
-					path:   strings.Split(fileName, ".")[0],
+					path:   fileName,
 					tstamp: keyValueEntry.tstamp,
 				}
 				_, err := db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
@@ -493,7 +496,7 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 			keyValueEntry.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
 			hasTimestampExpired := utils.HasTimestampExpired(keyValueEntry.tstamp)
 			if !hasTimestampExpired {
-				fileName := strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
+				fileName := utils.GetFilenameWithoutExtension(filePath)
 				kdValue := KeyDirValue{
 					offset: keyValueEntry.offset,
 					size:   keyValueEntry.size,
@@ -545,6 +548,15 @@ func (db *Db) CreateActiveDatafile(dirPath string) error {
 			oldPath := filepath.Join(dirPath, file.Name())
 			newPath := filepath.Join(dirPath, inactiveName)
 			os.Rename(oldPath, newPath)
+
+			// db.segments[file.Name()].path = newPath
+			fp, err := db.getSegmentFilePointerFromPath(inactiveName)
+			if err != nil {
+				return err
+			}
+			db.segments[inactiveName] = db.segments[file.Name()]
+			db.segments[inactiveName].path = inactiveName
+			db.segments[inactiveName].fp = fp
 		}
 	}
 
@@ -562,8 +574,10 @@ func (db *Db) Close() error {
 		err := db.activeDataFilePointer.Close()
 		return err
 	}
-	for _, v := range db.segments {
-		v.fp.Close()
+	for _, segment := range db.segments {
+		if !segment.closed {
+			segment.fp.Close()
+		}
 	}
 	return nil
 }
@@ -655,19 +669,8 @@ func (db *Db) deleteKey(key []byte) error {
 		return errors.New(KEY_NOT_FOUND)
 	}
 
-	a := filepath.Join(db.dirPath, fmt.Sprintf("%s.idfile", v.path))
-	f, err := os.OpenFile(a, os.O_WRONLY, 0644)
-	if err != nil {
-		b := filepath.Join(db.dirPath, fmt.Sprintf("%s.dfile", v.path))
-		f, err = os.OpenFile(b, os.O_WRONLY, 0644)
-		if err != nil {
-			return err
-		}
-	}
-	defer f.Close()
-
-	f.WriteAt([]byte{DELETED_FLAG_SET_VALUE}, v.offset)
-
+	f := db.segments[v.path]
+	f.fp.WriteAt([]byte{DELETED_FLAG_SET_VALUE}, v.offset)
 	db.lru.Remove(v.blockNumber)
 	db.keyDir.Delete(key)
 
@@ -716,7 +719,7 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	kdValue := KeyDirValue{
 		offset: newKeyValueEntry.offset,
 		size:   newKeyValueEntry.size,
-		path:   strings.Split(utils.GetFilenameWithoutExtension(db.activeDataFile), ".")[0],
+		path:   utils.GetFilenameWithoutExtension(db.activeDataFile),
 		tstamp: newKeyValueEntry.tstamp,
 	}
 
