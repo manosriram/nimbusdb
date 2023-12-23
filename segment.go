@@ -90,3 +90,41 @@ func (db *Db) getSegmentFilePointerFromPath(keyDirPath string) (*os.File, error)
 	}
 	return f, nil
 }
+
+func (db *Db) updateSegment(kdValue *KeyDirValue, segment *Segment) error {
+	segmentBlock, ok := db.getSegmentBlock(kdValue.path, segment.currentBlockNumber)
+	if !ok {
+		return ERROR_CANNOT_READ_FILE
+	}
+	segmentBlock.endOffset = kdValue.offset + kdValue.size
+	db.setSegmentBlock(kdValue.path, segment.currentBlockNumber, segmentBlock)
+	if segment.currentBlockOffset+kdValue.size <= BlockSize {
+		kdValue.blockNumber = segment.currentBlockNumber
+		db.setSegmentBlockOffset(kdValue.path, db.getSegmentBlockOffset(kdValue.path)+kdValue.size)
+	} else {
+		segment.currentBlockNumber += 1
+		segment.blocks[segment.currentBlockNumber] = &BlockOffsetPair{
+			startOffset: kdValue.offset,
+			endOffset:   kdValue.offset + kdValue.size,
+			filePath:    kdValue.path,
+		}
+		kdValue.blockNumber = segment.currentBlockNumber
+		db.setSegmentBlockOffset(kdValue.path, kdValue.size)
+	}
+	db.setSegment(kdValue.path, segment)
+	return nil
+}
+
+func createNewSegment(kdValue *KeyDirValue) *Segment {
+	return &Segment{
+		blocks: map[int64]*BlockOffsetPair{
+			0: {startOffset: kdValue.offset,
+				endOffset: kdValue.offset + kdValue.size,
+				filePath:  kdValue.path,
+			},
+		},
+		path:               kdValue.path,
+		currentBlockNumber: 0,
+		currentBlockOffset: 0,
+	}
+}

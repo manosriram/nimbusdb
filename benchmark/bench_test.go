@@ -67,7 +67,7 @@ func get(b *testing.B) {
 			Value: []byte("testvalue"),
 		}
 		_, err := db.Get(kv.Key)
-		if err != nil && err.Error() != nimbusdb.KEY_NOT_FOUND {
+		if err != nil && err != nimbusdb.ERROR_KEY_NOT_FOUND {
 			log.Fatal(err)
 		}
 	}

@@ -147,7 +147,7 @@ func Test_Delete(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	_, err = d.Get(kv.Key)
-	assert.Equal(t, err.Error(), nimbusdb.KEY_NOT_FOUND)
+	assert.Equal(t, err, nimbusdb.ERROR_KEY_NOT_FOUND)
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
 	})
@@ -175,7 +175,7 @@ func Test_InMemory_Delete(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	va, err = d.Get(kv.Key)
-	assert.Equal(t, err.Error(), nimbusdb.KEY_NOT_FOUND)
+	assert.Equal(t, err, nimbusdb.ERROR_KEY_NOT_FOUND)
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
 	})
@@ -208,7 +208,6 @@ func Test_StressGet(t *testing.T) {
 			Key:   []byte(utils.GetTestKey(i)),
 			Value: []byte("testvalue"),
 		}
-		// fmt.Println("ok ", i)
 		v, err := d.Get(kv.Key)
 		assert.Nil(t, err)
 		assert.Equal(t, kv.Value, v)
@@ -291,7 +290,7 @@ func Test_ConcurrentDelete(t *testing.T) {
 			assert.Nil(t, err)
 
 			_, err = d.Get(kv.Key)
-			assert.Equal(t, nimbusdb.KEY_NOT_FOUND, err.Error())
+			assert.Equal(t, nimbusdb.ERROR_KEY_NOT_FOUND, err)
 		}()
 	}
 	wg.Wait()
