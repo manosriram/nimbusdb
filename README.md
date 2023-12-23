@@ -99,11 +99,6 @@ if err != nil {
 }
 ```
 
-## Benchmarks
-![Screenshot 2023-12-23 at 4 08 56 AM](https://github.com/manosriram/nimbusdb/assets/38112857/76720f68-ad16-44ee-a408-12b06e6c051a)
-
-
-
 
 [Progress Board](https://trello.com/b/2eDSLLb3/nimbusdb) | [Streams](https://youtube.com/playlist?list=PLJALjJgNSDVo5veOf2apgMIE1QgN7IEfk) | [godoc](https://pkg.go.dev/github.com/manosriram/nimbusdb)
 
