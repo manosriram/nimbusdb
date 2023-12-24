@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -46,16 +45,17 @@ const (
 )
 
 const (
-	DeleteFlagOffset int64 = 1
-	TstampOffset           = 11
-	KeySizeOffset          = 21
-	ValueSizeOffset        = 31
+	CrcOffset        int64 = 5
+	DeleteFlagOffset       = 6
+	TstampOffset           = 16
+	KeySizeOffset          = 26
+	ValueSizeOffset        = 36
 
-	StaticChunkSize = 1 + 10 + 10 + 10
+	StaticChunkSize = 5 + 1 + 10 + 10 + 10
 	BTreeDegree     = 10
 )
 const (
-	TotalStaticChunkSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + DeleteFlagOffset + StaticChunkSize
+	TotalStaticChunkSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + DeleteFlagOffset + CrcOffset + StaticChunkSize
 )
 
 var (
@@ -64,6 +64,7 @@ var (
 	ERROR_OFFSET_EXCEEDED_FILE_SIZE = errors.New("offset exceeded file size")
 	ERROR_CANNOT_READ_FILE          = errors.New("error reading file")
 	ERROR_KEY_VALUE_SIZE_EXCEEDED   = errors.New(fmt.Sprintf("exceeded limit of %d bytes", BlockSize))
+	ERROR_CRC_DOES_NOT_MATCH        = errors.New("crc does not match. corrupted datafile")
 )
 
 const (
@@ -79,7 +80,8 @@ const (
 	EXIT_NOT_OK = 0
 	EXIT_OK     = 1
 
-	INITIAL_SEGMENT_OFFSET = 0
+	INITIAL_SEGMENT_OFFSET         = 0
+	INITIAL_KEY_VALUE_ENTRY_OFFSET = 0
 )
 
 type Options struct {
@@ -289,54 +291,6 @@ func (db *Db) getKeyValueEntryFromOffsetViaFilePath(keyDirPath string) ([]byte, 
 		return nil, err
 	}
 	return data, nil
-}
-
-func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*KeyValueEntry, error) {
-	defer utils.Recover()
-
-	f, err := db.getSegmentFilePointerFromPath(kdValue.path)
-	if err != nil {
-		return nil, err
-	}
-
-	data := make([]byte, kdValue.size)
-	f.Seek(kdValue.offset, io.SeekCurrent)
-	f.Read(data)
-
-	deleted := data[0]
-	if deleted == DELETED_FLAG_BYTE_VALUE {
-		return nil, ERROR_KEY_NOT_FOUND
-	}
-
-	tstamp := data[DeleteFlagOffset:TstampOffset]
-	tstamp64Bit := utils.ByteToInt64(tstamp)
-	hasTimestampExpired := utils.HasTimestampExpired(tstamp64Bit)
-	if hasTimestampExpired {
-		return nil, ERROR_KEY_NOT_FOUND
-	}
-
-	ksz := data[TstampOffset:KeySizeOffset]
-	intKsz := utils.ByteToInt64(ksz)
-
-	// get value size
-	vsz := data[KeySizeOffset:ValueSizeOffset]
-	intVsz := utils.ByteToInt64(vsz)
-
-	// get key
-	k := data[ValueSizeOffset : ValueSizeOffset+intKsz]
-
-	// get value
-	v := data[ValueSizeOffset+intKsz : ValueSizeOffset+intKsz+intVsz]
-
-	return &KeyValueEntry{
-		tstamp: int64(tstamp64Bit),
-		ksz:    int64(intKsz),
-		vsz:    int64(intVsz),
-		k:      k,
-		v:      v,
-		offset: kdValue.offset,
-		size:   kdValue.size,
-	}, nil
 }
 
 func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, error) {
@@ -585,7 +539,7 @@ func (db *Db) limitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Op
 			os.Remove(opts.MergeFilePath)
 		} else {
 			db.createActiveDatafile(db.dirPath)
-			newKeyValueEntry.offset = 0
+			newKeyValueEntry.offset = INITIAL_KEY_VALUE_ENTRY_OFFSET
 		}
 	}
 }
@@ -618,9 +572,9 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	v, _ := db.getKeyDir(key)
+	v, err := db.getKeyDir(key)
 	if v == nil {
-		return nil, ERROR_KEY_NOT_FOUND
+		return nil, err
 	}
 	return v.v, nil
 }
@@ -630,6 +584,7 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	intKSz := int64(len(kv.Key))
 	intVSz := int64(len(utils.Encode(kv.Value)))
+
 	newKeyValueEntry := NewKeyValueEntry(
 		DELETED_FLAG_UNSET_VALUE,
 		db.getLastOffset(),
@@ -639,11 +594,16 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 		kv.Key,
 		utils.Encode(kv.Value),
 	)
-	newKeyValueEntry.setTTL(kv)
+	if kv.Ttl > 0 {
+		newKeyValueEntry.setTTLViaDuration(kv.Ttl)
+	} else {
+		newKeyValueEntry.setTTLViaDuration(KEY_EXPIRES_IN_DEFAULT)
+	}
 
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
+	newKeyValueEntry.setCRC(newKeyValueEntry.calculateCRC())
 	err := db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
