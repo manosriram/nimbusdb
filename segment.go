@@ -36,50 +36,60 @@ func (db *Db) getSegmentBlock(path string, blockNumber int64) (*BlockOffsetPair,
 	return block, true
 }
 
-func (db *Db) getSegment(path string) *Segment {
-	return db.segments[path]
-}
-
-func (db *Db) getSegmentBlockOffset(path string) int64 {
-	return db.segments[path].currentBlockOffset
-}
-
-func (db *Db) getSegmentBlockNumber(path string) int64 {
-	return db.segments[path].currentBlockNumber
-}
-
 func (db *Db) setSegment(path string, segment *Segment) {
 	db.segments[path] = segment
 }
 
-func (db *Db) setSegmentPath(segmentPath string, path string) {
-	segment := db.getSegment(segmentPath)
-	segment.path = path
-	db.setSegment(path, segment)
+func (db *Db) getSegment(path string) (*Segment, bool) {
+	segment, ok := db.segments[path]
+	return segment, ok
 }
 
-func (db *Db) setSegmentFp(path string, fp *os.File) {
-	segment := db.getSegment(path)
-	segment.fp = fp
-	db.setSegment(path, segment)
+func (seg *Segment) getBlockOffset() int64 {
+	return seg.currentBlockOffset
 }
 
-func (db *Db) setSegmentBlockNumber(path string, blockNumber int64) {
-	segment := db.getSegment(path)
-	segment.currentBlockNumber = blockNumber
-	db.setSegment(path, segment)
+func (seg *Segment) getBlockNumber() int64 {
+	return seg.currentBlockNumber
 }
 
-func (db *Db) setSegmentBlockOffset(path string, blockOffset int64) {
-	segment := db.getSegment(path)
-	segment.currentBlockOffset = blockOffset
-	db.setSegment(path, segment)
+func (seg *Segment) getFp() *os.File {
+	return seg.fp
 }
 
-func (db *Db) setSegmentBlock(path string, blockNumber int64, block *BlockOffsetPair) {
-	segment := db.getSegment(path)
-	segment.blocks[blockNumber] = block
-	db.setSegment(path, segment)
+func (seg *Segment) getPath() string {
+	return seg.path
+}
+
+func (seg *Segment) setPath(path string) {
+	seg.path = path
+}
+
+func (seg *Segment) setFp(fp *os.File) {
+	seg.fp = fp
+}
+
+func (seg *Segment) closeFp() error {
+	if !seg.closed {
+		err := seg.fp.Close()
+		if err != nil {
+			return err
+		}
+	}
+	seg.closed = true
+	return nil
+}
+
+func (seg *Segment) setBlockNumber(blockNumber int64) {
+	seg.currentBlockNumber = blockNumber
+}
+
+func (seg *Segment) setBlockOffset(blockOffset int64) {
+	seg.currentBlockOffset = blockOffset
+}
+
+func (seg *Segment) setBlock(blockNumber int64, block *BlockOffsetPair) {
+	seg.blocks[blockNumber] = block
 }
 
 func (db *Db) getSegmentFilePointerFromPath(keyDirPath string) (*os.File, error) {
@@ -91,16 +101,16 @@ func (db *Db) getSegmentFilePointerFromPath(keyDirPath string) (*os.File, error)
 	return f, nil
 }
 
-func (db *Db) updateSegment(kdValue *KeyDirValue, segment *Segment) error {
+func (db *Db) updateSegment(kdValue *KeyDirValue, segment *Segment) (*Segment, error) {
 	segmentBlock, ok := db.getSegmentBlock(kdValue.path, segment.currentBlockNumber)
 	if !ok {
-		return ERROR_CANNOT_READ_FILE
+		return nil, ERROR_CANNOT_READ_FILE
 	}
 	segmentBlock.endOffset = kdValue.offset + kdValue.size
-	db.setSegmentBlock(kdValue.path, segment.currentBlockNumber, segmentBlock)
+	segment.setBlock(segment.currentBlockNumber, segmentBlock)
 	if segment.currentBlockOffset+kdValue.size <= BlockSize {
 		kdValue.blockNumber = segment.currentBlockNumber
-		db.setSegmentBlockOffset(kdValue.path, db.getSegmentBlockOffset(kdValue.path)+kdValue.size)
+		segment.setBlockOffset(segment.getBlockOffset() + kdValue.size)
 	} else {
 		segment.currentBlockNumber += 1
 		segment.blocks[segment.currentBlockNumber] = &BlockOffsetPair{
@@ -109,10 +119,10 @@ func (db *Db) updateSegment(kdValue *KeyDirValue, segment *Segment) error {
 			filePath:    kdValue.path,
 		}
 		kdValue.blockNumber = segment.currentBlockNumber
-		db.setSegmentBlockOffset(kdValue.path, kdValue.size)
+		segment.setBlockOffset(kdValue.size)
 	}
 	db.setSegment(kdValue.path, segment)
-	return nil
+	return segment, nil
 }
 
 func createNewSegment(kdValue *KeyDirValue) *Segment {

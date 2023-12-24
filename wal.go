@@ -32,6 +32,7 @@ type Block struct {
 func NewKeyValueEntry(deleted byte, offset, ksz, vsz, size int64, k, v []byte) *KeyValueEntry {
 	return &KeyValueEntry{
 		deleted: deleted,
+		offset:  offset,
 		ksz:     ksz,
 		vsz:     vsz,
 		size:    size,
