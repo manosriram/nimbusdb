@@ -15,6 +15,7 @@ const (
 
 func main() {
 	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
+	defer d.Close()
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Printf("> ")

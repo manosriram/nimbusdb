@@ -52,12 +52,13 @@ As time passes, expired or deleted keys take up space that is not useful. Hence,
 </details>
 
 ## Usage
-#### Open DB connection
+#### Initialize db connection
 ```go
 d, err := nimbusdb.Open(&nimbusdb.Options{Path: "/path/to/data/directory"})
 if err != nil {
   // handle error
 }
+defer d.Close()
 ```
 
 #### Set
