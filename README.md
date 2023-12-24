@@ -1,10 +1,12 @@
 ## nimbusdb
-Persistent Key-Value store based on Bitcask paper.
+> WARNING: nimbusdb is in early stages of development; do not use this in production.
 
-nimbusdb is a fast, lightweight, and scalable key-value store written in golang, based on bitcask.
+Persistent key-value store based on Bitcask paper.
 
-nimbusdb maintains an active datafile to which data is written. When it crosses a threshold, the datafile is made inactive and new datafile is created.
-As time passes, expired/deleted keys take up space which is not useful; Hence, a process called `merge` is done which removes all expired/deleted keys and frees up space.
+nimbusdb is a fast, lightweight, and scalable key-value store based on Bitcask.
+
+nimbusdb maintains an active datafile to which data is written. When it crosses a threshold, the datafile is made inactive, and a new datafile is created.
+As time passes, expired or deleted keys take up space that is not useful. Hence, a process called `merge` is done to remove all expired or deleted keys and free up space.
 
 ## Features
 <details>
@@ -49,7 +51,7 @@ As time passes, expired/deleted keys take up space which is not useful; Hence, a
   Blocks are cached for faster reads. Default size of an Block is 32KB.
 </details>
 
-## Documentation
+## Usage
 #### Open DB connection
 ```go
 d, err := nimbusdb.Open(&nimbusdb.Options{Path: "/path/to/data/directory"})

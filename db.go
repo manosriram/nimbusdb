@@ -76,7 +76,9 @@ const (
 	LRU_SIZE = 50
 	LRU_TTL  = 24 * time.Hour
 
-	EXIT_FAIL              = 0
+	EXIT_NOT_OK = 0
+	EXIT_OK     = 1
+
 	INITIAL_SEGMENT_OFFSET = 0
 )
 
@@ -123,7 +125,7 @@ type Db struct {
 }
 
 func NewDb(dirPath string) *Db {
-	segments := make(map[string]*Segment)
+	segments := make(map[string]*Segment, 0)
 	db := &Db{
 		dirPath: dirPath,
 		keyDir: &BTree{
@@ -241,7 +243,7 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 
 	segment, ok := db.getSegment(kv.path)
 	if !ok {
-		return nil, ERROR_NO_ACTIVE_FILE_OPENED
+		return nil, ERROR_CANNOT_READ_FILE
 	}
 
 	block, ok := db.getSegmentBlock(kv.path, kv.blockNumber)
@@ -355,7 +357,7 @@ func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, e
 		}
 
 		if keyValueEntry.deleted != DELETED_FLAG_BYTE_VALUE {
-			keyValueEntry.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
+			keyValueEntry.fileID = utils.GetFilenameWithoutExtension(filePath)
 			hasTimestampExpired := utils.HasTimestampExpired(keyValueEntry.tstamp)
 			if !hasTimestampExpired {
 				split := strings.Split(filePath, "/")
@@ -398,7 +400,7 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 		}
 
 		if keyValueEntry.deleted != DELETED_FLAG_BYTE_VALUE {
-			keyValueEntry.fileID = strings.Split(utils.GetFilenameWithoutExtension(filePath), ".")[0]
+			keyValueEntry.fileID = utils.GetFilenameWithoutExtension(filePath)
 			hasTimestampExpired := utils.HasTimestampExpired(keyValueEntry.tstamp)
 			if !hasTimestampExpired {
 				fileName := utils.GetFilenameWithoutExtension(filePath)
@@ -488,7 +490,7 @@ func (db *Db) handleInterrupt() {
 				log.Panicf("error closing DB: %s\n", err.Error())
 			}
 			log.Printf("closing DB via interrupt %v", s)
-			os.Exit(EXIT_FAIL)
+			os.Exit(EXIT_NOT_OK)
 		}
 	}
 }
