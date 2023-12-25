@@ -1,16 +1,14 @@
 package nimbusdb
 
 import (
-	"fmt"
 	"hash/crc32"
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
 )
 
-var (
-	crcTable = crc32.MakeTable(crc32.IEEE)
-)
+// var (
+// )
 
 // KeyValueEntry is the raw and complete uncompressed data existing on the disk.
 // KeyValueEntry is stored in Blocks in cache for faster reads.
@@ -106,6 +104,7 @@ func (kv *KeyValueEntry) setCRC(crc uint32) {
 
 func (kv *KeyValueEntry) calculateCRC() uint32 {
 	data := kv.PayloadToByte()
+	crcTable := crc32.MakeTable(crc32.IEEE)
 	hash := crc32.Checksum(data, crcTable)
 	return hash
 }
@@ -172,7 +171,6 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	)
 	x.setTTLViaTimestamp(tstamp64Bit)
 
-	fmt.Println(intCrc, x.calculateCRC())
 	if intCrc != x.calculateCRC() {
 		return nil, ERROR_CRC_DOES_NOT_MATCH
 	}
