@@ -2,16 +2,12 @@
 
 // import "fmt"
 
-// type y struct {
-// name string
-// }
-
 // func main() {
-// x := [5]int{1, 2, 3, 4, 5}
-// fmt.Println(x)
-// for i, v := range x {
-// v += 2
-// x[i] = v
-// }
-// fmt.Println(x)
+// // t := crc32.MakeTable(crc32.IEEE)
+// // data := []byte("test")
+// // hash := crc32.Checksum(data, t)
+// // fmt.Println(utils.Int32ToByte(int32(hash)))
+
+// s := "helloworld"
+// fmt.Println(string(s[6]))
 // }

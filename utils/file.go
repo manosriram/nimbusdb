@@ -43,6 +43,18 @@ func HasTimestampExpired(timestamp int64) bool {
 	return tstamp < now
 }
 
+func UInt32ToByte(n uint32) []byte {
+	b := make([]byte, binary.MaxVarintLen32)
+	binary.LittleEndian.PutUint32(b, n)
+	return b
+}
+
+func UInt64ToByte(n uint64) []byte {
+	b := make([]byte, binary.MaxVarintLen64)
+	binary.LittleEndian.PutUint64(b, n)
+	return b
+}
+
 func Int32ToByte(n int32) []byte {
 	b := make([]byte, binary.MaxVarintLen32)
 	binary.LittleEndian.PutUint32(b, uint32(n))
@@ -53,6 +65,20 @@ func Int64ToByte(n int64) []byte {
 	b := make([]byte, binary.MaxVarintLen64)
 	binary.LittleEndian.PutUint64(b, uint64(n))
 	return b
+}
+
+func ByteToUInt64(b []byte) uint64 {
+	if lesser := len(b) < binary.MaxVarintLen64; lesser {
+		b = b[:cap(b)]
+	}
+	return binary.LittleEndian.Uint64(b)
+}
+
+func ByteToUInt32(b []byte) uint32 {
+	if lesser := len(b) < binary.MaxVarintLen32; lesser {
+		b = b[:cap(b)]
+	}
+	return binary.LittleEndian.Uint32(b)
 }
 
 func ByteToInt32(b []byte) int32 {

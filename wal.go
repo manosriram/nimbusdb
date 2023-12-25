@@ -1,14 +1,20 @@
 package nimbusdb
 
 import (
+	"hash/crc32"
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
 )
 
+var (
+	crcTable = crc32.MakeTable(crc32.IEEE)
+)
+
 // KeyValueEntry is the raw and complete uncompressed data existing on the disk.
 // KeyValueEntry is stored in Blocks in cache for faster reads.
 type KeyValueEntry struct {
+	crc         uint32
 	deleted     byte
 	blockNumber int64
 	offset      int64
@@ -29,52 +35,66 @@ type Block struct {
 	blockOffset int64
 }
 
-func NewKeyValueEntry(deleted byte, offset, ksz, vsz, size int64, k, v []byte) *KeyValueEntry {
-	return &KeyValueEntry{
-		deleted: deleted,
-		offset:  offset,
-		ksz:     ksz,
-		vsz:     vsz,
-		size:    size,
-		k:       k,
-		v:       v,
-	}
+func (kv *KeyValueEntry) StaticChunkSize() int64 {
+	return StaticChunkSize + kv.ksz + kv.vsz
 }
 
-func (s *KeyValueEntry) StaticChunkSize() int {
-	return StaticChunkSize + len(s.k) + len(s.v)
+func (kv *KeyValueEntry) Key() []byte {
+	return kv.k
 }
 
-func (s *KeyValueEntry) Key() []byte {
-	return s.k
+func (kv *KeyValueEntry) Value() []byte {
+	return kv.v
 }
 
-func (s *KeyValueEntry) Value() []byte {
-	return s.v
-}
-
-func (s *KeyValueEntry) ToByte() []byte {
-	keyValueEntryInBytes := make([]byte, 0, s.StaticChunkSize())
+func (kv *KeyValueEntry) PayloadToByte() []byte {
+	keyValueEntryInBytes := make([]byte, 0, kv.StaticChunkSize())
 
 	buf := make([]byte, 0)
-	buf = append(buf, s.deleted)
-	buf = append(buf, utils.Int64ToByte(s.tstamp)...)
-	buf = append(buf, utils.Int64ToByte(s.ksz)...)
-	buf = append(buf, utils.Int64ToByte(s.vsz)...)
+	buf = append(buf, utils.Int64ToByte(kv.tstamp)...)
+	buf = append(buf, utils.Int64ToByte(kv.ksz)...)
+	buf = append(buf, utils.Int64ToByte(kv.vsz)...)
 
 	keyValueEntryInBytes = append(keyValueEntryInBytes, buf...)
-	keyValueEntryInBytes = append(keyValueEntryInBytes, s.k...)
-	keyValueEntryInBytes = append(keyValueEntryInBytes, s.v...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.k...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.v...)
 
 	return keyValueEntryInBytes
 }
 
-func (s *KeyValueEntry) setTTL(kv *KeyValuePair) {
-	if kv.Ttl > 0 {
-		s.tstamp = int64(time.Now().Add(kv.Ttl).UnixNano())
-	} else {
-		s.tstamp = int64(time.Now().Add(KEY_EXPIRES_IN_DEFAULT).UnixNano())
-	}
+func (kv *KeyValueEntry) ToByte() []byte {
+	keyValueEntryInBytes := make([]byte, 0, kv.StaticChunkSize())
+
+	buf := make([]byte, 0)
+	buf = append(buf, utils.UInt32ToByte(kv.crc)...)
+	buf = append(buf, kv.deleted)
+	buf = append(buf, utils.Int64ToByte(kv.tstamp)...)
+	buf = append(buf, utils.Int64ToByte(kv.ksz)...)
+	buf = append(buf, utils.Int64ToByte(kv.vsz)...)
+
+	keyValueEntryInBytes = append(keyValueEntryInBytes, buf...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.k...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.v...)
+
+	return keyValueEntryInBytes
+}
+
+func (kv *KeyValueEntry) setTTLViaTimestamp(tstamp int64) {
+	kv.tstamp = tstamp
+}
+
+func (kv *KeyValueEntry) setTTLViaDuration(tstamp time.Duration) {
+	kv.tstamp = int64(time.Now().Add(tstamp).UnixNano())
+}
+
+func (kv *KeyValueEntry) setCRC(crc uint32) {
+	kv.crc = crc
+}
+
+func (kv *KeyValueEntry) calculateCRC() uint32 {
+	data := kv.PayloadToByte()
+	hash := crc32.Checksum(data, crcTable)
+	return hash
 }
 
 func (db *Db) writeKeyValueEntry(keyValueEntry *KeyValueEntry) error {
@@ -95,7 +115,10 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 		return nil, ERROR_OFFSET_EXCEEDED_FILE_SIZE
 	}
 
-	deleted := data[offset]
+	crc := data[offset : offset+CrcOffset]
+	intCrc := utils.ByteToUInt32(crc)
+
+	deleted := data[offset+CrcOffset]
 
 	tstamp := data[offset+DeleteFlagOffset : offset+TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
@@ -125,18 +148,22 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	// get value
 	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
 
-	// make keyValueEntry
-	x := &KeyValueEntry{
+	keyValueEntryFromOffset := &KeyValueEntry{
 		deleted: deleted,
-		tstamp:  int64(tstamp64Bit),
-		ksz:     int64(intKsz),
-		vsz:     int64(intVsz),
-		k:       k,
-		v:       v,
 		offset:  offset,
-		size:    StaticChunkSize + intKsz + intVsz,
+		ksz:     int64(len(k)),
+		vsz:     int64(len(utils.Encode(v))),
+		size:    int64(StaticChunkSize + intKsz + intVsz),
+		k:       k,
+		v:       utils.Encode(v),
 	}
-	return x, nil
+	keyValueEntryFromOffset.setTTLViaTimestamp(tstamp64Bit)
+
+	if intCrc != keyValueEntryFromOffset.calculateCRC() {
+		return nil, ERROR_CRC_DOES_NOT_MATCH
+	}
+
+	return keyValueEntryFromOffset, nil
 }
 
 // Gets KeyValueEntry using offset and adds it to cacheBlock
