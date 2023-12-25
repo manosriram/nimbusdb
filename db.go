@@ -45,19 +45,18 @@ const (
 )
 
 const (
-	CrcSize        int64 = 5
-	DeleteFlagSize       = 1
-	TstampSize           = 10
-	KeySizeSize          = 10
-	ValueSizeSize        = 10
+	CrcSize         int64 = 5
+	DeleteFlagSize        = 1
+	TstampSize            = 10
+	KeySizeSize           = 10
+	ValueSizeSize         = 10
+	StaticChunkSize       = CrcSize + DeleteFlagSize + TstampSize + KeySizeSize + ValueSizeSize
 
 	CrcOffset        int64 = 5
 	DeleteFlagOffset       = 6
 	TstampOffset           = 16
 	KeySizeOffset          = 26
 	ValueSizeOffset        = 36
-
-	StaticChunkSize int64 = CrcSize + DeleteFlagSize + TstampSize + KeySizeSize + ValueSizeSize
 
 	BTreeDegree int = 10
 )
