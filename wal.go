@@ -35,8 +35,8 @@ type Block struct {
 	blockOffset int64
 }
 
-func (kv *KeyValueEntry) StaticChunkSize() int {
-	return StaticChunkSize + len(kv.k) + len(kv.v)
+func (kv *KeyValueEntry) StaticChunkSize() int64 {
+	return StaticChunkSize + kv.ksz + kv.vsz
 }
 
 func (kv *KeyValueEntry) Key() []byte {
