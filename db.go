@@ -54,6 +54,7 @@ const (
 	StaticChunkSize = 5 + 1 + 10 + 10 + 10
 	BTreeDegree     = 10
 )
+
 const (
 	TotalStaticChunkSize int64 = TstampOffset + KeySizeOffset + ValueSizeOffset + DeleteFlagOffset + CrcOffset + StaticChunkSize
 )
@@ -572,9 +573,9 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	v, err := db.getKeyDir(key)
+	v, _ := db.getKeyDir(key)
 	if v == nil {
-		return nil, err
+		return nil, ERROR_KEY_NOT_FOUND
 	}
 	return v.v, nil
 }
