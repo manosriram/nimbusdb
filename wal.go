@@ -130,7 +130,7 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	crc := data[offset : offset+CrcOffset]
 	intCrc := utils.ByteToUInt32(crc)
 
-	deleted := data[offset+DeleteFlagOffset]
+	deleted := data[offset+CrcOffset]
 
 	tstamp := data[offset+DeleteFlagOffset : offset+TstampOffset]
 	tstamp64Bit := utils.ByteToInt64(tstamp)
