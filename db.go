@@ -573,9 +573,9 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	v, _ := db.getKeyDir(key)
+	v, err := db.getKeyDir(key)
 	if v == nil {
-		return nil, ERROR_KEY_NOT_FOUND
+		return nil, err
 	}
 	return v.v, nil
 }

@@ -1,6 +1,7 @@
 package nimbusdb
 
 import (
+	"fmt"
 	"hash/crc32"
 	"time"
 
@@ -171,6 +172,7 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	)
 	x.setTTLViaTimestamp(tstamp64Bit)
 
+	fmt.Println(intCrc, x.calculateCRC())
 	if intCrc != x.calculateCRC() {
 		return nil, ERROR_CRC_DOES_NOT_MATCH
 	}
