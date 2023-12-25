@@ -45,13 +45,19 @@ const (
 )
 
 const (
+	CrcSize        = 5
+	DeleteFlagSize = 1
+	TstampSize     = 10
+	KeySizeSize    = 10
+	ValueSizeSize  = 10
+
 	CrcOffset        int64 = 5
 	DeleteFlagOffset       = 6
 	TstampOffset           = 16
 	KeySizeOffset          = 26
 	ValueSizeOffset        = 36
 
-	StaticChunkSize = 5 + 1 + 10 + 10 + 10
+	StaticChunkSize = CrcSize + DeleteFlagSize + TstampSize + KeySizeSize + ValueSizeSize
 	BTreeDegree     = 10
 )
 
@@ -546,10 +552,6 @@ func (db *Db) limitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Op
 }
 
 func (db *Db) deleteKey(key []byte) error {
-	// TODO: move this to someplace better
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	v := db.keyDir.Get(key)
 	if v == nil {
 		return ERROR_KEY_NOT_FOUND
@@ -586,15 +588,16 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	intKSz := int64(len(kv.Key))
 	intVSz := int64(len(utils.Encode(kv.Value)))
 
-	newKeyValueEntry := NewKeyValueEntry(
-		DELETED_FLAG_UNSET_VALUE,
-		db.getLastOffset(),
-		int64(len(kv.Key)),
-		int64(len(utils.Encode(kv.Value))),
-		int64(StaticChunkSize+intKSz+intVSz),
-		kv.Key,
-		utils.Encode(kv.Value),
-	)
+	newKeyValueEntry := &KeyValueEntry{
+		deleted: DELETED_FLAG_UNSET_VALUE,
+		offset:  db.getLastOffset(),
+		ksz:     int64(len(kv.Key)),
+		vsz:     int64(len(utils.Encode(kv.Value))),
+		size:    int64(StaticChunkSize + intKSz + intVSz),
+		k:       kv.Key,
+		v:       utils.Encode(kv.Value),
+	}
+
 	if kv.Ttl > 0 {
 		newKeyValueEntry.setTTLViaDuration(kv.Ttl)
 	} else {
@@ -622,6 +625,9 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 // Deletes a key-value pair.
 // Returns error if any.
 func (db *Db) Delete(key []byte) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	err := db.deleteKey(key)
 	return err
 }

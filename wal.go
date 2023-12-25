@@ -7,8 +7,9 @@ import (
 	"github.com/manosriram/nimbusdb/utils"
 )
 
-// var (
-// )
+var (
+	crcTable = crc32.MakeTable(crc32.IEEE)
+)
 
 // KeyValueEntry is the raw and complete uncompressed data existing on the disk.
 // KeyValueEntry is stored in Blocks in cache for faster reads.
@@ -32,18 +33,6 @@ type Block struct {
 	entries     []*KeyValueEntry
 	blockNumber int64
 	blockOffset int64
-}
-
-func NewKeyValueEntry(deleted byte, offset, ksz, vsz, size int64, k, v []byte) *KeyValueEntry {
-	return &KeyValueEntry{
-		deleted: deleted,
-		offset:  offset,
-		ksz:     ksz,
-		vsz:     vsz,
-		size:    size,
-		k:       k,
-		v:       v,
-	}
 }
 
 func (kv *KeyValueEntry) StaticChunkSize() int {
@@ -104,7 +93,6 @@ func (kv *KeyValueEntry) setCRC(crc uint32) {
 
 func (kv *KeyValueEntry) calculateCRC() uint32 {
 	data := kv.PayloadToByte()
-	crcTable := crc32.MakeTable(crc32.IEEE)
 	hash := crc32.Checksum(data, crcTable)
 	return hash
 }
@@ -160,22 +148,22 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	// get value
 	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
 
-	x := NewKeyValueEntry(
-		deleted,
-		offset,
-		int64(len(k)),
-		int64(len(utils.Encode(v))),
-		int64(StaticChunkSize+intKsz+intVsz),
-		k,
-		utils.Encode(v),
-	)
-	x.setTTLViaTimestamp(tstamp64Bit)
+	keyValueEntryFromOffset := &KeyValueEntry{
+		deleted: deleted,
+		offset:  offset,
+		ksz:     int64(len(k)),
+		vsz:     int64(len(utils.Encode(v))),
+		size:    int64(StaticChunkSize + intKsz + intVsz),
+		k:       k,
+		v:       utils.Encode(v),
+	}
+	keyValueEntryFromOffset.setTTLViaTimestamp(tstamp64Bit)
 
-	if intCrc != x.calculateCRC() {
+	if intCrc != keyValueEntryFromOffset.calculateCRC() {
 		return nil, ERROR_CRC_DOES_NOT_MATCH
 	}
 
-	return x, nil
+	return keyValueEntryFromOffset, nil
 }
 
 // Gets KeyValueEntry using offset and adds it to cacheBlock
