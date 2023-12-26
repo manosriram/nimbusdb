@@ -59,6 +59,16 @@ func main() {
 			fmt.Println(string(z))
 		} else if text == "sync" {
 			d.Sync()
+		} else if text == "keyreader" {
+			prefix := ""
+			d.KeyReader(prefix, func(k []byte) {
+				fmt.Printf("%s\n", string(k))
+			})
+		} else if text == "keyvaluereader" {
+			keyPrefix := ""
+			d.KeyValueReader(keyPrefix, func(k []byte, v []byte) {
+				fmt.Printf("%s %s\n", string(k), string(v))
+			})
 		}
 	}
 }
