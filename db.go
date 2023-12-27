@@ -40,7 +40,7 @@ const (
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
 
-	DatafileThreshold = 1 * MB
+	DatafileThreshold = 200 * KB
 	BlockSize         = 32 * KB
 )
 
@@ -121,16 +121,18 @@ func NewKeyDirValue(offset, size, tstamp int64, path string) *KeyDirValue {
 }
 
 type Db struct {
-	dirPath               string
-	dataFilePath          string
-	activeDataFile        string
-	activeDataFilePointer *os.File
-	keyDir                *BTree
-	opts                  *Options
-	lastOffset            atomic.Int64
-	mu                    sync.RWMutex
-	segments              map[string]*Segment
-	lru                   *expirable.LRU[int64, *Block]
+	dirPath                    string
+	dataFilePath               string
+	activeDataFile             string
+	activeMergeDataFile        string
+	activeDataFilePointer      *os.File
+	activeMergeDataFilePointer *os.File
+	keyDir                     *BTree
+	opts                       *Options
+	lastOffset                 atomic.Int64
+	mu                         sync.RWMutex
+	segments                   map[string]*Segment
+	lru                        *expirable.LRU[int64, *Block]
 }
 
 func NewDb(dirPath string) *Db {
@@ -179,6 +181,35 @@ func (db *Db) closeActiveDataFilePointer() error {
 	if db.activeDataFilePointer != nil {
 		return db.activeDataFilePointer.Close()
 	}
+	return nil
+}
+
+func (db *Db) getActiveMergeDataFilePointer() (*os.File, error) {
+	if db.activeMergeDataFilePointer == nil {
+		return nil, ERROR_NO_ACTIVE_FILE_OPENED
+	}
+	return db.activeMergeDataFilePointer, nil
+}
+
+func (db *Db) closeActiveMergeDataFilePointer() error {
+	if db.activeMergeDataFilePointer != nil {
+		return db.activeMergeDataFilePointer.Close()
+	}
+	return nil
+}
+
+func (db *Db) setActiveMergeDataFile(activeMergeDataFile string) error {
+	err := db.closeActiveMergeDataFilePointer()
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(activeMergeDataFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	db.activeMergeDataFile = activeMergeDataFile
+	db.activeMergeDataFilePointer = f
 	return nil
 }
 
@@ -302,8 +333,8 @@ func (db *Db) getKeyValueEntryFromOffsetViaFilePath(keyDirPath string) ([]byte, 
 
 func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, error) {
 	defer utils.Recover()
-
 	data, err := utils.ReadFile(filePath)
+
 	if err != nil {
 		return nil, err
 	}
@@ -313,8 +344,12 @@ func (db *Db) getActiveFileKeyValueEntries(filePath string) ([]*KeyValueEntry, e
 	var offset int64 = 0
 	for offset < int64(len(data)) {
 		keyValueEntry, err := getKeyValueEntryFromOffsetViaData(offset, data)
-		if err != nil {
+		if err != nil && err != ERROR_KEY_NOT_FOUND {
 			return nil, err
+		} else if err == ERROR_KEY_NOT_FOUND {
+			z, _ := db.seekOffsetFromDataFile(KeyDirValue{offset: offset, path: utils.GetFilenameWithoutExtension(filePath)})
+			offset += z.size
+			continue
 		}
 
 		if keyValueEntry.deleted != DELETED_FLAG_BYTE_VALUE {
@@ -390,8 +425,8 @@ func (db *Db) parseActiveKeyValueEntryFile(filePath string) error {
 
 func (db *Db) createInactiveDatafile(dirPath string) error {
 	file, err := os.CreateTemp(dirPath, TempInactiveDataFilePattern)
-	db.setActiveDataFile(file.Name())
-	db.setLastOffset(INITIAL_SEGMENT_OFFSET)
+	db.setActiveMergeDataFile(file.Name())
+	// db.setLastOffset(INITIAL_SEGMENT_OFFSET)
 	if err != nil {
 		return err
 	}
@@ -494,6 +529,7 @@ func Open(opts *Options) (*Db, error) {
 			return nil
 		}
 
+		fmt.Println(file.Name())
 		filePath := utils.JoinPaths(dirPath, file.Name())
 		if path.Ext(file.Name()) == ActiveKeyValueEntryDatafileSuffix {
 			db.setActiveDataFile(filePath)
@@ -505,6 +541,7 @@ func Open(opts *Options) (*Db, error) {
 			db.parseActiveKeyValueEntryFile(filePath)
 		}
 
+		fmt.Println(db.activeDataFile)
 		return nil
 	})
 	return db, nil
@@ -531,9 +568,14 @@ func (db *Db) All() []*KeyValuePair {
 }
 
 func (db *Db) limitDatafileToThreshold(newKeyValueEntry *KeyValueEntry, opts *Options) {
+	var f *os.File
 	var sz os.FileInfo
 	var err error
-	f, err := db.getActiveDataFilePointer()
+	if opts.IsMerge {
+		f, err = db.getActiveMergeDataFilePointer()
+	} else {
+		f, err = db.getActiveDataFilePointer()
+	}
 	sz, err = f.Stat()
 	if err != nil {
 		log.Fatal(err)
@@ -636,17 +678,21 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	if path.Ext(file.Name()) != InactiveKeyValueEntryDataFileSuffix {
 		return nil
 	}
+	fmt.Println("walking ", file.Name())
 
 	path := utils.JoinPaths(db.dirPath, file.Name())
-	db.setActiveDataFile(path)
-	db.setLastOffset(INITIAL_SEGMENT_OFFSET)
+	// fmt.Println(path)
+	db.setActiveMergeDataFile(path)
+	// db.setLastOffset(INITIAL_SEGMENT_OFFSET)
 
 	keyValueEntries, _ := db.getActiveFileKeyValueEntries(path)
+	fmt.Println(len(keyValueEntries))
 	if len(keyValueEntries) == 0 {
 		err = os.Remove(path)
 		if err != nil {
 			return err
 		}
+		return nil
 	}
 
 	for _, keyValueEntry := range keyValueEntries {
@@ -654,7 +700,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 			IsMerge:       true,
 			MergeFilePath: path,
 		})
-		err := db.writeKeyValueEntry(keyValueEntry)
+		err := db.writeKeyValueEntryToPath(db.activeMergeDataFile, keyValueEntry)
 		if err != nil {
 			return err
 		}

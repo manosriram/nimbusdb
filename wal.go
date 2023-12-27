@@ -1,7 +1,10 @@
 package nimbusdb
 
 import (
+	"fmt"
 	"hash/crc32"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
@@ -97,6 +100,15 @@ func (kv *KeyValueEntry) calculateCRC() uint32 {
 	return hash
 }
 
+func (db *Db) writeKeyValueEntryToPath(path string, keyValueEntry *KeyValueEntry) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(keyValueEntry.ToByte())
+	return err
+}
+
 func (db *Db) writeKeyValueEntry(keyValueEntry *KeyValueEntry) error {
 	f, err := db.getActiveDataFilePointer()
 	if err != nil {
@@ -106,12 +118,65 @@ func (db *Db) writeKeyValueEntry(keyValueEntry *KeyValueEntry) error {
 	return err
 }
 
+func (db *Db) seekOffsetFromDataFile(kdValue KeyDirValue) (*KeyValueEntry, error) {
+	defer utils.Recover()
+
+	// f, err := db.getSegmentFilePointerFromPath(kdValue.path)
+	// if err != nil {
+	// return nil, err
+	// }
+	p := filepath.Join(db.dirPath, kdValue.path)
+	data, _ := utils.ReadFile(p)
+
+	// data := make([]byte, kdValue.size)
+	// f.Seek(kdValue.offset, io.SeekCurrent)
+	// f.Read(data)
+
+	o := kdValue.offset
+	deleted := data[o]
+
+	tstamp := data[o+DeleteFlagOffset : o+TstampOffset]
+	tstamp64Bit := utils.ByteToInt64(tstamp)
+	// hasTimestampExpired := utils.HasTimestampExpired(tstamp64Bit)
+	// if hasTimestampExpired {
+	// return nil, ERROR_KEY_NOT_FOUND
+	// }
+
+	ksz := data[o+TstampOffset : o+KeySizeOffset]
+	intKsz := utils.ByteToInt64(ksz)
+
+	// get value size
+	vsz := data[o+KeySizeOffset : o+ValueSizeOffset]
+	intVsz := utils.ByteToInt64(vsz)
+
+	// get key
+	k := data[o+ValueSizeOffset : o+ValueSizeOffset+intKsz]
+
+	// get value
+	v := data[o+ValueSizeOffset+intKsz : o+ValueSizeOffset+intKsz+intVsz]
+
+	x := &KeyValueEntry{
+		tstamp: int64(tstamp64Bit),
+		ksz:    int64(intKsz),
+		vsz:    int64(intVsz),
+		k:      k,
+		v:      v,
+		offset: kdValue.offset,
+		size:   intKsz + intVsz + StaticChunkSize,
+	}
+	if deleted == DELETED_FLAG_BYTE_VALUE {
+		return x, ERROR_KEY_NOT_FOUND
+	}
+	return x, nil
+}
+
 // Gets the KeyValueEntry from given offset using data slice
 // Used to get the entire KeyValueEntry from file data
 func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntry, error) {
 	defer utils.Recover()
 
 	if int(offset+StaticChunkSize) > len(data) {
+		fmt.Println(offset, StaticChunkSize, len(data))
 		return nil, ERROR_OFFSET_EXCEEDED_FILE_SIZE
 	}
 
