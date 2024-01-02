@@ -1,5 +1,8 @@
 db:
-	go run examples/db.go
+	go run examples/db/db.go
+
+batch:
+	go run examples/batch/batch.go
 
 build:
 	go build -v
