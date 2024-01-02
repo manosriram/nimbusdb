@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/manosriram/nimbusdb"
 )
@@ -23,14 +22,16 @@ func main() {
 
 	b := d.NewBatch()
 
-	b.Set([]byte("test3"), []byte("test4"))
-	b.SetWithTTL([]byte("test3"), []byte("test4"), 1*time.Hour)
+	kv.Key = []byte("test3")
+	kv.Value = []byte("test4")
+	b.Set(kv)
 
 	pairs := d.All()
 	for i, pair := range pairs {
 		fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.Ttl)
 	}
-	// b.Rollback()
 
-	b.Commit()
+	b.Exists([]byte("test3")) // true
+
+	b.Commit() // or b.Rollback() to discard all writes
 }
