@@ -18,7 +18,7 @@ func main() {
 	value := []byte("test2")
 	d.Set(key, value)
 
-	b := d.NewBatch()
+	b, _ := d.NewBatch()
 
 	key = []byte("test3")
 	value = []byte("test4")

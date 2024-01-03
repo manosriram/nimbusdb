@@ -29,12 +29,9 @@ func main() {
 			value, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
 			value = strings.TrimSpace(value)
-			kv := &nimbusdb.KeyValuePair{
-				Key:   []byte(key),
-				Value: []byte(value),
-				// ExpiresIn: 5 * time.Second,
-			}
-			_, err := d.Set(kv)
+			k := []byte(key)
+			v := []byte(value)
+			_, err := d.Set(k, v)
 			fmt.Println(err)
 			break
 		case "delete":
@@ -54,10 +51,8 @@ func main() {
 		case "get":
 			key, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
-			kv := &nimbusdb.KeyValuePair{
-				Key: []byte(key),
-			}
-			z, err := d.Get(kv.Key)
+			k := []byte(key)
+			z, err := d.Get(k)
 			if err != nil {
 				fmt.Println(err)
 			}

@@ -13,13 +13,15 @@ import (
 
 func Test_Batch_SetGet(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer d.Close()
-	defer b.Close()
-
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
 	assert.NotEqual(t, b, nil)
+
+	defer d.Close()
+	defer b.Close()
 
 	k := []byte("testkey1")
 	v := []byte("testvalue1")
@@ -36,12 +38,15 @@ func Test_Batch_SetGet(t *testing.T) {
 
 func Test_Batch_InMemory_SetGet_With_TTL(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer d.Close()
-	defer b.Close()
-
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer d.Close()
+	defer b.Close()
 
 	v, err := b.SetWithTTL([]byte("testkey1"), []byte("testvalue1"), EXPIRY_DURATION)
 	assert.Equal(t, err, nil)
@@ -60,11 +65,15 @@ func Test_Batch_InMemory_SetGet_With_TTL(t *testing.T) {
 
 func Test_Batch_InMemory_Stress_SetGet(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer b.Close()
-	defer d.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer b.Close()
+	defer d.Close()
 
 	for i := 0; i < 10000; i++ {
 		key := []byte(utils.GetTestKey(i))
@@ -89,11 +98,15 @@ func Test_Batch_InMemory_Stress_SetGet(t *testing.T) {
 
 func Test_Batch_Commit(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer b.Close()
-	defer d.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer b.Close()
+	defer d.Close()
 
 	key := []byte("testkey")
 	value := []byte("testvalue")
@@ -102,7 +115,8 @@ func Test_Batch_Commit(t *testing.T) {
 	assert.Nil(t, err)
 
 	b.Commit()
-	b2 := d.NewBatch()
+	b2, err := d.NewBatch()
+	assert.Equal(t, err, nil)
 
 	va, err := b2.Get(key)
 	assert.Nil(t, err)
@@ -115,11 +129,15 @@ func Test_Batch_Commit(t *testing.T) {
 
 func Test_Batch_Rollback(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer b.Close()
-	defer d.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer b.Close()
+	defer d.Close()
 
 	key := []byte("testkey")
 	value := []byte("testvalue")
@@ -128,7 +146,8 @@ func Test_Batch_Rollback(t *testing.T) {
 	assert.Nil(t, err)
 
 	b.Rollback()
-	b2 := d.NewBatch()
+	b2, err := d.NewBatch()
+	assert.Equal(t, err, nil)
 
 	_, err = b2.Get(key)
 	assert.NotNil(t, err)
@@ -141,11 +160,15 @@ func Test_Batch_Rollback(t *testing.T) {
 
 func Test_Batch_Delete(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer b.Close()
-	defer d.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer b.Close()
+	defer d.Close()
 
 	key := []byte("testkey")
 	value := []byte("testvalue")
@@ -169,11 +192,15 @@ func Test_Batch_Delete(t *testing.T) {
 
 func Test_Batch_ConcurrentSet(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer d.Close()
-	defer b.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer d.Close()
+	defer b.Close()
 
 	numGoRoutines := 10000
 
@@ -194,11 +221,15 @@ func Test_Batch_ConcurrentSet(t *testing.T) {
 
 func Test_Batch_ConcurrentGet(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer b.Close()
-	defer d.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer b.Close()
+	defer d.Close()
 
 	numGoRoutines := 10000
 
@@ -220,11 +251,15 @@ func Test_Batch_ConcurrentGet(t *testing.T) {
 
 func Test_Batch_ConcurrentDelete(t *testing.T) {
 	d, err := Open(opts)
-	b := d.NewBatch()
-	defer d.Close()
-	defer b.Close()
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, d, nil)
+
+	b, err := d.NewBatch()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, b, nil)
+
+	defer d.Close()
+	defer b.Close()
 
 	numGoRoutines := 10000
 

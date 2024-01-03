@@ -22,13 +22,13 @@ type Batch struct {
 	writeQueue []*KeyValuePair
 }
 
-func (db *Db) NewBatch() *Batch {
+func (db *Db) NewBatch() (*Batch, error) {
 	b := &Batch{
 		db:     db,
 		closed: false,
 	}
 	b.batchlock.Lock()
-	return b
+	return b, nil
 }
 
 func (b *Batch) Close() error {
