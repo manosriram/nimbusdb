@@ -39,6 +39,14 @@ As time passes, expired or deleted keys take up space that is not useful. Hence,
 
 <details>
   <summary>
+  Supports Batch operations
+  </summary>
+  Batch operations can be performed and committed to save to disk or rollbacked to discard the batch. Operations
+  cannot be performed once the batch is closed.
+</details>
+
+<details>
+  <summary>
   Single disk-seek write
   </summary>
   Writes are just one disk seek since we're appending to the file.
@@ -100,6 +108,43 @@ err := d.Sync()
 if err != nil {
   // handle error
 }
+```
+
+#### Batch Operations
+```go
+d, err := nimbusdb.Open(&nimbusdb.Options{Path: "/path/to/data/directory"})
+if err != nil {
+  // handle error
+}
+defer d.Close()
+b, err := d.NewBatch()
+if err != nil {
+  // handle error
+}
+defer b.Close()
+
+_, err = b.Set([]byte("key"), []byte("value")) // not written to disk yet.
+if err != nil {
+  // handle error
+}
+
+key, err := b.Get([]byte("key"))
+if err != nil {
+  // handle error
+}
+
+err = b.Delete([]byte("key"))
+if err != nil {
+  // handle error
+}
+
+exists, err := b.Exists([]byte("key"))
+if err != nil {
+  // handle error
+}
+
+b.Commit() // write all pending writes to disk
+b.Rollback() // discard all pending writes
 ```
 
 

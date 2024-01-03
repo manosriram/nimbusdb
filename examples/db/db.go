@@ -23,52 +23,56 @@ func main() {
 
 		text = strings.TrimSpace(text)
 
-		if text == "set" {
+		switch text {
+		case "set":
 			key, _ := reader.ReadString('\n')
 			value, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
 			value = strings.TrimSpace(value)
-			kv := &nimbusdb.KeyValuePair{
-				Key:   []byte(key),
-				Value: []byte(value),
-				// ExpiresIn: 5 * time.Second,
-			}
-			_, err := d.Set(kv)
+			k := []byte(key)
+			v := []byte(value)
+			_, err := d.Set(k, v)
 			fmt.Println(err)
-		} else if text == "delete" {
+			break
+		case "delete":
 			key, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
 			d.Delete([]byte(key))
-		} else if text == "all" {
+			break
+		case "all":
 			pairs := d.All()
 			for i, pair := range pairs {
 				fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.Ttl)
 			}
-		} else if text == "exit" {
+			break
+		case "exit":
 			os.Exit(1)
-		} else if text == "get" {
+			break
+		case "get":
 			key, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
-			kv := &nimbusdb.KeyValuePair{
-				Key: []byte(key),
-			}
-			z, err := d.Get(kv.Key)
+			k := []byte(key)
+			z, err := d.Get(k)
 			if err != nil {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-		} else if text == "sync" {
+			break
+		case "sync":
 			d.Sync()
-		} else if text == "keyreader" {
+			break
+		case "keyreader":
 			prefix := ""
 			d.KeyReader(prefix, func(k []byte) {
 				fmt.Printf("%s\n", string(k))
 			})
-		} else if text == "keyvaluereader" {
+			break
+		case "keyvaluereader":
 			keyPrefix := ""
 			d.KeyValueReader(keyPrefix, func(k []byte, v []byte) {
 				fmt.Printf("%s %s\n", string(k), string(v))
 			})
+			break
 		}
 	}
 }
