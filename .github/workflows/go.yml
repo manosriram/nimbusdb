@@ -27,7 +27,7 @@ jobs:
       run: make test
 
     - name: Run Test with race checks
-      run: make testrace
+      run: make test-race
 
     - name: Run Benchmark Test
       run: make bench

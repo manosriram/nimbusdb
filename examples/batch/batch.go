@@ -14,17 +14,15 @@ func main() {
 	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
 	defer d.Close()
 
-	kv := &nimbusdb.KeyValuePair{
-		Key:   []byte("test1"),
-		Value: []byte("test2"),
-	}
-	d.Set(kv)
+	key := []byte("test1")
+	value := []byte("test2")
+	d.Set(key, value)
 
 	b := d.NewBatch()
 
-	kv.Key = []byte("test3")
-	kv.Value = []byte("test4")
-	b.Set(kv)
+	key = []byte("test3")
+	value = []byte("test4")
+	b.Set(key, value)
 
 	pairs := d.All()
 	for i, pair := range pairs {

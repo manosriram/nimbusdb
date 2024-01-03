@@ -41,21 +41,17 @@ func set(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(fmt.Sprintf("%d", rand.Int())),
-			Value: []byte("testvalue"),
-		}
-		db.Set(kv)
+		key := []byte(fmt.Sprintf("%d", rand.Int()))
+		value := []byte("testvalue")
+		db.Set(key, value)
 	}
 }
 
 func get(b *testing.B) {
 	for i := 0; i < 10000; i++ {
-		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(utils.GetTestKey(i)),
-			Value: []byte("testvalue"),
-		}
-		_, err := db.Set(kv)
+		key := []byte(utils.GetTestKey(i))
+		value := []byte("testvalue")
+		_, err := db.Set(key, value)
 		assert.Nil(b, err)
 	}
 	b.ResetTimer()

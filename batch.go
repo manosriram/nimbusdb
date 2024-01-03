@@ -3,6 +3,7 @@ package nimbusdb
 import (
 	"bytes"
 	"sync"
+	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
 )
@@ -23,6 +24,9 @@ func (db *Db) NewBatch() *Batch {
 }
 
 func (b *Batch) Close() error {
+	if b.db.closed {
+		return ERROR_DB_CLOSED
+	}
 	if len(b.writeQueue) > 0 { // flush all pending queue writes to disk
 		b.Commit()
 	}
@@ -76,9 +80,7 @@ func (b *Batch) Exists(k []byte) bool {
 	return bytes.Equal(v.k, k)
 }
 
-func (b *Batch) Set(kv *KeyValuePair) error {
-	k := kv.Key
-
+func (b *Batch) Set(k []byte, v []byte) (interface{}, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	index := -1
@@ -88,43 +90,77 @@ func (b *Batch) Set(kv *KeyValuePair) error {
 			break
 		}
 	}
+	kv := &KeyValuePair{
+		Key:   k,
+		Value: v,
+	}
 	if index != -1 {
 		b.writeQueue[index] = kv
 	} else {
 		b.writeQueue = append(b.writeQueue, kv)
 	}
-	return nil
+	return v, nil
 }
 
-// func (b *Batch) SetWithTTL(k []byte, v []byte, ttl time.Duration) error {
-// b.mu.Lock()
-// defer b.mu.Unlock()
-// index := -1
-// for i := range b.writeQueue {
-// if bytes.Equal(k, b.writeQueue[i].Key) {
-// index = i
-// break
-// }
-// }
-// kv := &KeyValuePair{
-// Key:   k,
-// Value: v,
-// Ttl:   ttl,
-// }
+func (b *Batch) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	index := -1
+	for i := range b.writeQueue {
+		if bytes.Equal(k, b.writeQueue[i].Key) {
+			index = i
+			break
+		}
+	}
+	kv := &KeyValuePair{
+		Key:   k,
+		Value: v,
+		Ttl:   ttl,
+	}
+	if index != -1 {
+		b.writeQueue[index] = kv
+	} else {
+		b.writeQueue = append(b.writeQueue, kv)
+	}
+	return v, nil
+}
 
-// if index != -1 {
-// b.writeQueue[index] = kv
-// } else {
-// b.writeQueue = append(b.writeQueue, kv)
-// }
-// return nil
-// }
+func (b *Batch) Delete(k []byte) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	index := -1
+	for i := range b.writeQueue {
+		if bytes.Equal(k, b.writeQueue[i].Key) {
+			index = i
+			break
+		}
+	}
+
+	if index != -1 {
+		b.writeQueue[index] = b.writeQueue[len(b.writeQueue)-1]
+		b.writeQueue[len(b.writeQueue)-1] = nil
+		b.writeQueue = b.writeQueue[:len(b.writeQueue)-1]
+	} else {
+		err := b.db.Delete(k)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return nil
+}
 
 func (b *Batch) Commit() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	var err error
 	for i := range b.writeQueue {
-		_, err := b.db.Set(b.writeQueue[i])
+		if b.writeQueue[i].Ttl == 0 {
+			_, err = b.db.Set(b.writeQueue[i].Key, utils.Encode(b.writeQueue[i].Value))
+		} else {
+			_, err = b.db.SetWithTTL(b.writeQueue[i].Key, utils.Encode(b.writeQueue[i].Value), b.writeQueue[i].Ttl)
+		}
 		if err != nil {
 			return err
 		}

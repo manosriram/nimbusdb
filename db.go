@@ -72,6 +72,7 @@ var (
 	ERROR_CANNOT_READ_FILE          = errors.New("error reading file")
 	ERROR_KEY_VALUE_SIZE_EXCEEDED   = errors.New(fmt.Sprintf("exceeded limit of %d bytes", BlockSize))
 	ERROR_CRC_DOES_NOT_MATCH        = errors.New("crc does not match. corrupted datafile")
+	ERROR_DB_CLOSED                 = errors.New("database is closed")
 )
 
 const (
@@ -122,6 +123,7 @@ func NewKeyDirValue(offset, size, tstamp int64, path string) *KeyDirValue {
 
 type Db struct {
 	dirPath               string
+	closed                bool
 	dataFilePath          string
 	activeDataFile        string
 	activeDataFilePointer *os.File
@@ -137,6 +139,7 @@ func NewDb(dirPath string) *Db {
 	segments := make(map[string]*Segment, 0)
 	db := &Db{
 		dirPath: dirPath,
+		closed:  false,
 		keyDir: &BTree{
 			tree: btree.New(BTreeDegree),
 		},
@@ -523,6 +526,7 @@ func (db *Db) Close() error {
 			return err
 		}
 	}
+	db.closed = true
 	return nil
 }
 
@@ -584,25 +588,20 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 
 // Sets a key-value pair.
 // Returns the value if set succeeds, else returns an error.
-func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
-	intKSz := int64(len(kv.Key))
-	intVSz := int64(len(utils.Encode(kv.Value)))
+func (db *Db) Set(k []byte, v []byte) (interface{}, error) {
+	intKSz := int64(len(k))
+	intVSz := int64(len(utils.Encode(v)))
 
 	newKeyValueEntry := &KeyValueEntry{
 		deleted: DELETED_FLAG_UNSET_VALUE,
 		offset:  db.getLastOffset(),
-		ksz:     int64(len(kv.Key)),
-		vsz:     int64(len(utils.Encode(kv.Value))),
+		ksz:     int64(len(k)),
+		vsz:     int64(len(utils.Encode(v))),
 		size:    int64(StaticChunkSize + intKSz + intVSz),
-		k:       kv.Key,
-		v:       utils.Encode(kv.Value),
+		k:       k,
+		v:       utils.Encode(v),
 	}
-
-	if kv.Ttl > 0 {
-		newKeyValueEntry.setTTLViaDuration(kv.Ttl)
-	} else {
-		newKeyValueEntry.setTTLViaDuration(KEY_EXPIRES_IN_DEFAULT)
-	}
+	newKeyValueEntry.setTTLViaDuration(KEY_EXPIRES_IN_DEFAULT)
 
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -614,12 +613,45 @@ func (db *Db) Set(kv *KeyValuePair) (interface{}, error) {
 	}
 
 	kdValue := NewKeyDirValue(newKeyValueEntry.offset, newKeyValueEntry.size, newKeyValueEntry.tstamp, utils.GetFilenameWithoutExtension(db.activeDataFile))
-	_, err = db.setKeyDir(kv.Key, *kdValue)
+	_, err = db.setKeyDir(k, *kdValue)
 	if err != nil {
 		return nil, err
 	}
 
-	return kv.Value, err
+	return v, err
+}
+
+func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, error) {
+	intKSz := int64(len(k))
+	intVSz := int64(len(utils.Encode(v)))
+
+	newKeyValueEntry := &KeyValueEntry{
+		deleted: DELETED_FLAG_UNSET_VALUE,
+		offset:  db.getLastOffset(),
+		ksz:     int64(len(k)),
+		vsz:     int64(len(utils.Encode(v))),
+		size:    int64(StaticChunkSize + intKSz + intVSz),
+		k:       k,
+		v:       utils.Encode(v),
+	}
+	newKeyValueEntry.setTTLViaDuration(ttl)
+
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
+	newKeyValueEntry.setCRC(newKeyValueEntry.calculateCRC())
+	err := db.writeKeyValueEntry(newKeyValueEntry)
+	if err != nil {
+		return nil, err
+	}
+
+	kdValue := NewKeyDirValue(newKeyValueEntry.offset, newKeyValueEntry.size, newKeyValueEntry.tstamp, utils.GetFilenameWithoutExtension(db.activeDataFile))
+	_, err = db.setKeyDir(k, *kdValue)
+	if err != nil {
+		return nil, err
+	}
+
+	return v, err
 }
 
 // Deletes a key-value pair.
