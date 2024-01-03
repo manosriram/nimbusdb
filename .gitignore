@@ -3,6 +3,6 @@ test_data
 concurrent_test_data
 .DS_Store
 .vscode
-tests/nimbusdb*
-benchmark/nimbusdb*
+nimbusdb_temp*
+benchmark/nimbusdb_temp*
 gcreport.txt
