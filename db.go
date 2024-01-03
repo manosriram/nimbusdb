@@ -588,7 +588,7 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 
 // Sets a key-value pair.
 // Returns the value if set succeeds, else returns an error.
-func (db *Db) Set(k []byte, v []byte) (interface{}, error) {
+func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
 

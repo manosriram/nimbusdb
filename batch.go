@@ -10,6 +10,7 @@ import (
 
 type Batch struct {
 	db         *Db
+	closed     bool
 	batchlock  sync.Mutex
 	mu         sync.RWMutex
 	writeQueue []*KeyValuePair
@@ -17,7 +18,8 @@ type Batch struct {
 
 func (db *Db) NewBatch() *Batch {
 	b := &Batch{
-		db: db,
+		db:     db,
+		closed: false,
 	}
 	b.batchlock.Lock()
 	return b
@@ -28,8 +30,12 @@ func (b *Batch) Close() error {
 		return ERROR_DB_CLOSED
 	}
 	if len(b.writeQueue) > 0 { // flush all pending queue writes to disk
-		b.Commit()
+		err := b.Commit()
+		if err != nil {
+			return err
+		}
 	}
+	b.closed = true
 	b.batchlock.Unlock()
 	return nil
 }
@@ -80,7 +86,7 @@ func (b *Batch) Exists(k []byte) bool {
 	return bytes.Equal(v.k, k)
 }
 
-func (b *Batch) Set(k []byte, v []byte) (interface{}, error) {
+func (b *Batch) Set(k []byte, v []byte) ([]byte, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	index := -1
