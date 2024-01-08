@@ -33,21 +33,17 @@ func main() {
 			v := []byte(value)
 			_, err := d.Set(k, v)
 			fmt.Println(err)
-			break
 		case "delete":
 			key, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
 			d.Delete([]byte(key))
-			break
 		case "all":
 			pairs := d.All()
 			for i, pair := range pairs {
 				fmt.Printf("%d. %s %v %v\n", i+1, pair.Key, pair.Value, pair.Ttl)
 			}
-			break
 		case "exit":
 			os.Exit(1)
-			break
 		case "get":
 			key, _ := reader.ReadString('\n')
 			key = strings.TrimSpace(key)
@@ -57,22 +53,18 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-			break
 		case "sync":
 			d.Sync()
-			break
 		case "keyreader":
 			prefix := ""
 			d.KeyReader(prefix, func(k []byte) {
 				fmt.Printf("%s\n", string(k))
 			})
-			break
 		case "keyvaluereader":
 			keyPrefix := ""
 			d.KeyValueReader(keyPrefix, func(k []byte, v []byte) {
 				fmt.Printf("%s %s\n", string(k), string(v))
 			})
-			break
 		}
 	}
 }
