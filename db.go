@@ -133,6 +133,7 @@ type Db struct {
 	mu                    sync.RWMutex
 	segments              map[string]*Segment
 	lru                   *expirable.LRU[int64, *Block]
+	watcher               chan WatcherEvent
 }
 
 func NewDb(dirPath string) *Db {
@@ -145,6 +146,7 @@ func NewDb(dirPath string) *Db {
 		},
 		lru:      expirable.NewLRU[int64, *Block](LRU_SIZE, nil, LRU_TTL),
 		segments: segments,
+		watcher:  make(chan WatcherEvent),
 	}
 
 	return db
@@ -227,7 +229,6 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		}
 		db.removeBlockCache(segment.getBlockNumber())
 	}
-
 	db.keyDir.Set(key, kdValue)
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
 
@@ -592,6 +593,14 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
 
+	var existingValueForKey []byte
+	existingValueEntryForKey, err := db.getKeyDir(k)
+	if err != nil {
+		existingValueForKey = nil
+	} else {
+		existingValueForKey = existingValueEntryForKey.v
+	}
+
 	newKeyValueEntry := &KeyValueEntry{
 		deleted: DELETED_FLAG_UNSET_VALUE,
 		offset:  db.getLastOffset(),
@@ -607,15 +616,22 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	defer db.mu.Unlock()
 	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
 	newKeyValueEntry.setCRC(newKeyValueEntry.calculateCRC())
-	err := db.writeKeyValueEntry(newKeyValueEntry)
+	err = db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
 
 	kdValue := NewKeyDirValue(newKeyValueEntry.offset, newKeyValueEntry.size, newKeyValueEntry.tstamp, utils.GetFilenameWithoutExtension(db.activeDataFile))
 	_, err = db.setKeyDir(k, *kdValue)
+
 	if err != nil {
 		return nil, err
+	}
+
+	if existingValueForKey == nil {
+		db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
+	} else {
+		db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
 	}
 
 	return v, err
@@ -624,6 +640,14 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
+
+	var existingValueForKey []byte
+	existingValueEntryForKey, err := db.getKeyDir(k)
+	if err != nil {
+		existingValueForKey = nil
+	} else {
+		existingValueForKey = existingValueEntryForKey.v
+	}
 
 	newKeyValueEntry := &KeyValueEntry{
 		deleted: DELETED_FLAG_UNSET_VALUE,
@@ -640,7 +664,7 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 	defer db.mu.Unlock()
 	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
 	newKeyValueEntry.setCRC(newKeyValueEntry.calculateCRC())
-	err := db.writeKeyValueEntry(newKeyValueEntry)
+	err = db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -649,6 +673,12 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 	_, err = db.setKeyDir(k, *kdValue)
 	if err != nil {
 		return nil, err
+	}
+
+	if existingValueForKey == nil {
+		db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
+	} else {
+		db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
 	}
 
 	return v, err
@@ -661,6 +691,9 @@ func (db *Db) Delete(key []byte) error {
 	defer db.mu.Unlock()
 
 	err := db.deleteKey(key)
+	if err != nil {
+		db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil))
+	}
 	return err
 }
 

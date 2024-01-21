@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -13,9 +14,31 @@ const (
 	DirPath = "/Users/manosriram/nimbusdb/test_data"
 )
 
+func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
+	for event := range ch {
+		switch event.EventType {
+		case "CREATE":
+			log.Printf("got event: %s for Key %s with Value %s\n", event.EventType, event.Key, event.NewValue)
+			break
+		case "UPDATE":
+			log.Printf("got event: %s for Key %s with OldValue %s and NewValue %s\n", event.EventType, event.Key, event.OldValue, event.NewValue)
+			break
+		case "DELETE":
+			log.Printf("got event: %s for Key %s\n", event.EventType, event.Key)
+			break
+		}
+	}
+}
+
 func main() {
 	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
 	defer d.Close()
+
+	ch, _ := d.NewWatch()
+	defer d.CloseWatch()
+
+	go watchKeyChange(ch)
+
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Printf("> ")
