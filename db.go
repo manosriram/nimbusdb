@@ -528,6 +528,7 @@ func (db *Db) Close() error {
 		}
 	}
 	db.closed = true
+	close(db.watcher)
 	return nil
 }
 
@@ -594,11 +595,11 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	intVSz := int64(len(utils.Encode(v)))
 
 	var existingValueForKey []byte
-	existingValueEntryForKey, err := db.getKeyDir(k)
+	existingValueEntryForKey, err := db.Get(k)
 	if err != nil {
 		existingValueForKey = nil
 	} else {
-		existingValueForKey = existingValueEntryForKey.v
+		existingValueForKey = existingValueEntryForKey
 	}
 
 	newKeyValueEntry := &KeyValueEntry{
@@ -629,11 +630,10 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	}
 
 	if existingValueForKey == nil {
-		db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
+		go db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
 	} else {
-		db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
+		go db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
 	}
-
 	return v, err
 }
 
@@ -642,11 +642,11 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 	intVSz := int64(len(utils.Encode(v)))
 
 	var existingValueForKey []byte
-	existingValueEntryForKey, err := db.getKeyDir(k)
+	existingValueEntryForKey, err := db.Get(k)
 	if err != nil {
 		existingValueForKey = nil
 	} else {
-		existingValueForKey = existingValueEntryForKey.v
+		existingValueForKey = existingValueEntryForKey
 	}
 
 	newKeyValueEntry := &KeyValueEntry{
@@ -676,9 +676,9 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 	}
 
 	if existingValueForKey == nil {
-		db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
+		go db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
 	} else {
-		db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
+		go db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
 	}
 
 	return v, err
@@ -692,7 +692,7 @@ func (db *Db) Delete(key []byte) error {
 
 	err := db.deleteKey(key)
 	if err != nil {
-		db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil))
+		go db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil))
 	}
 	return err
 }
