@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
+	"github.com/segmentio/ksuid"
 )
 
 var (
@@ -15,6 +16,7 @@ var (
 )
 
 type Batch struct {
+	id         ksuid.KSUID
 	db         *Db
 	closed     bool
 	batchlock  sync.Mutex
@@ -26,6 +28,7 @@ func (db *Db) NewBatch() (*Batch, error) {
 	b := &Batch{
 		db:     db,
 		closed: false,
+		id:     ksuid.New(),
 	}
 	b.batchlock.Lock()
 	return b, nil
@@ -188,15 +191,31 @@ func (b *Batch) Commit() error {
 	if b.closed {
 		return ERROR_BATCH_CLOSED
 	}
-	var err error
+
 	for i := range b.writeQueue {
-		if b.writeQueue[i].Ttl == 0 {
-			_, err = b.db.Set(b.writeQueue[i].Key, utils.Encode(b.writeQueue[i].Value))
+		k := b.writeQueue[i].Key
+		v := utils.Encode(b.writeQueue[i].Value)
+		var existingValueForKey []byte
+		existingValueEntryForKey, err := b.db.Get(k)
+		if err != nil {
+			existingValueForKey = nil
 		} else {
-			_, err = b.db.SetWithTTL(b.writeQueue[i].Key, utils.Encode(b.writeQueue[i].Value), b.writeQueue[i].Ttl)
+			existingValueForKey = existingValueEntryForKey
+		}
+
+		if b.writeQueue[i].Ttl == 0 {
+			_, err = b.db.Set(k, v, &Options{ShouldWatch: false})
+		} else {
+			_, err = b.db.SetWithTTL(k, v, b.writeQueue[i].Ttl, &Options{ShouldWatch: false})
 		}
 		if err != nil {
 			return err
+		}
+
+		if existingValueForKey == nil {
+			go b.db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, &b.id))
+		} else {
+			go b.db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, &b.id))
 		}
 	}
 	b.writeQueue = nil

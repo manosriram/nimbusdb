@@ -1,6 +1,10 @@
 package nimbusdb
 
-import "time"
+import (
+	"time"
+
+	"github.com/segmentio/ksuid"
+)
 
 type EventType string
 
@@ -11,11 +15,12 @@ const (
 )
 
 type WatcherEvent struct {
-	EventType  EventType
-	Key        []byte
-	OldValue   []byte
-	NewValue   []byte
-	KeyUpdated time.Time
+	EventType      EventType
+	Key            []byte
+	OldValue       []byte
+	NewValue       []byte
+	EventTimestamp time.Time
+	BatchId        *ksuid.KSUID
 }
 
 func (db *Db) NewWatch() (chan WatcherEvent, error) {
@@ -33,12 +38,13 @@ func (db *Db) CloseWatch() error {
 	return nil
 }
 
-func NewCreateWatcherEvent(key, oldValue, newValue []byte) WatcherEvent {
+func NewCreateWatcherEvent(key, oldValue, newValue []byte, batchId *ksuid.KSUID) WatcherEvent {
 	w := WatcherEvent{
-		EventType:  Create,
-		Key:        key,
-		NewValue:   newValue,
-		KeyUpdated: time.Now(),
+		EventType:      Create,
+		Key:            key,
+		NewValue:       newValue,
+		EventTimestamp: time.Now(),
+		BatchId:        batchId,
 	}
 	if oldValue != nil {
 		w.OldValue = oldValue
@@ -46,12 +52,13 @@ func NewCreateWatcherEvent(key, oldValue, newValue []byte) WatcherEvent {
 	return w
 }
 
-func NewUpdateWatcherEvent(key, oldValue, newValue []byte) WatcherEvent {
+func NewUpdateWatcherEvent(key, oldValue, newValue []byte, batchId *ksuid.KSUID) WatcherEvent {
 	w := WatcherEvent{
-		EventType:  Update,
-		Key:        key,
-		NewValue:   newValue,
-		KeyUpdated: time.Now(),
+		EventType:      Update,
+		Key:            key,
+		NewValue:       newValue,
+		EventTimestamp: time.Now(),
+		BatchId:        batchId,
 	}
 	if oldValue != nil {
 		w.OldValue = oldValue
@@ -59,12 +66,13 @@ func NewUpdateWatcherEvent(key, oldValue, newValue []byte) WatcherEvent {
 	return w
 }
 
-func NewDeleteWatcherEvent(key, oldValue, newValue []byte) WatcherEvent {
+func NewDeleteWatcherEvent(key, oldValue, newValue []byte, batchId *ksuid.KSUID) WatcherEvent {
 	w := WatcherEvent{
-		EventType:  Delete,
-		Key:        key,
-		NewValue:   newValue,
-		KeyUpdated: time.Now(),
+		EventType:      Delete,
+		Key:            key,
+		NewValue:       newValue,
+		EventTimestamp: time.Now(),
+		BatchId:        batchId,
 	}
 	if oldValue != nil {
 		w.OldValue = oldValue

@@ -31,11 +31,17 @@ func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
 }
 
 func main() {
-	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath})
+	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath, WatchQueueSize: 10})
 	defer d.Close()
 
 	ch, _ := d.NewWatch()
 	defer d.CloseWatch()
+
+	// b, _ := d.NewBatch()
+	// d.Set([]byte("asdlal"), []byte("asdlkjas"), &nimbusdb.Options{ShouldWatch: true})
+
+	// b.Set([]byte("asdlal"), []byte("asdlkjas"))
+	// b.Commit()
 
 	go watchKeyChange(ch)
 

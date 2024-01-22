@@ -93,9 +93,11 @@ const (
 )
 
 type Options struct {
-	IsMerge       bool
-	MergeFilePath string
-	Path          string
+	IsMerge        bool
+	MergeFilePath  string
+	Path           string
+	ShouldWatch    bool
+	WatchQueueSize int
 }
 
 type KeyValuePair struct {
@@ -136,7 +138,7 @@ type Db struct {
 	watcher               chan WatcherEvent
 }
 
-func NewDb(dirPath string) *Db {
+func NewDb(dirPath string, opts ...*Options) *Db {
 	segments := make(map[string]*Segment, 0)
 	db := &Db{
 		dirPath: dirPath,
@@ -146,8 +148,14 @@ func NewDb(dirPath string) *Db {
 		},
 		lru:      expirable.NewLRU[int64, *Block](LRU_SIZE, nil, LRU_TTL),
 		segments: segments,
-		watcher:  make(chan WatcherEvent),
 	}
+
+	db.watcher = make(chan WatcherEvent, func() int {
+		if len(opts) > 0 {
+			return opts[0].WatchQueueSize
+		}
+		return 0
+	}())
 
 	return db
 }
@@ -472,7 +480,7 @@ func Open(opts *Options) (*Db, error) {
 
 		dirPath = utils.JoinPaths(home, DefaultDataDir)
 	}
-	db := NewDb(dirPath)
+	db := NewDb(dirPath, opts)
 	go db.handleInterrupt()
 
 	err := os.MkdirAll(dirPath, os.ModePerm)
@@ -590,16 +598,18 @@ func (db *Db) Get(key []byte) ([]byte, error) {
 
 // Sets a key-value pair.
 // Returns the value if set succeeds, else returns an error.
-func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
+func (db *Db) Set(k []byte, v []byte, opts ...*Options) ([]byte, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
 
 	var existingValueForKey []byte
-	existingValueEntryForKey, err := db.Get(k)
-	if err != nil {
-		existingValueForKey = nil
-	} else {
-		existingValueForKey = existingValueEntryForKey
+	if (len(opts) > 0 && opts[0].ShouldWatch) || len(opts) == 0 {
+		existingValueEntryForKey, err := db.Get(k)
+		if err != nil {
+			existingValueForKey = nil
+		} else {
+			existingValueForKey = existingValueEntryForKey
+		}
 	}
 
 	newKeyValueEntry := &KeyValueEntry{
@@ -617,7 +627,7 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	defer db.mu.Unlock()
 	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
 	newKeyValueEntry.setCRC(newKeyValueEntry.calculateCRC())
-	err = db.writeKeyValueEntry(newKeyValueEntry)
+	err := db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -629,24 +639,29 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	if existingValueForKey == nil {
-		go db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
-	} else {
-		go db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
+	// do not watch if ShouldWatch is set with options
+	if (len(opts) > 0 && opts[0].ShouldWatch) || len(opts) == 0 {
+		if existingValueForKey == nil {
+			go db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, nil))
+		} else {
+			go db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, nil))
+		}
 	}
 	return v, err
 }
 
-func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, error) {
+func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration, opts ...*Options) (interface{}, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
 
 	var existingValueForKey []byte
-	existingValueEntryForKey, err := db.Get(k)
-	if err != nil {
-		existingValueForKey = nil
-	} else {
-		existingValueForKey = existingValueEntryForKey
+	if (len(opts) > 0 && opts[0].ShouldWatch) || len(opts) == 0 {
+		existingValueEntryForKey, err := db.Get(k)
+		if err != nil {
+			existingValueForKey = nil
+		} else {
+			existingValueForKey = existingValueEntryForKey
+		}
 	}
 
 	newKeyValueEntry := &KeyValueEntry{
@@ -664,7 +679,7 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 	defer db.mu.Unlock()
 	db.limitDatafileToThreshold(newKeyValueEntry, &Options{})
 	newKeyValueEntry.setCRC(newKeyValueEntry.calculateCRC())
-	err = db.writeKeyValueEntry(newKeyValueEntry)
+	err := db.writeKeyValueEntry(newKeyValueEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -675,24 +690,26 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 		return nil, err
 	}
 
-	if existingValueForKey == nil {
-		go db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v))
-	} else {
-		go db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v))
+	// do not watch if ShouldWatch is set with options
+	if (len(opts) > 0 && opts[0].ShouldWatch) || len(opts) == 0 {
+		if existingValueForKey == nil {
+			go db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, nil))
+		} else {
+			go db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, nil))
+		}
 	}
-
 	return v, err
 }
 
 // Deletes a key-value pair.
 // Returns error if any.
-func (db *Db) Delete(key []byte) error {
+func (db *Db) Delete(key []byte, opts ...*Options) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	err := db.deleteKey(key)
-	if err != nil {
-		go db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil))
+	if err != nil && (len(opts) > 0 && opts[0].ShouldWatch) || len(opts) == 0 {
+		go db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil, nil))
 	}
 	return err
 }
