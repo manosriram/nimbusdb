@@ -204,9 +204,9 @@ func (b *Batch) Commit() error {
 		}
 
 		if b.writeQueue[i].Ttl == 0 {
-			_, err = b.db.Set(k, v, &Options{ShouldWatch: false})
+			_, err = b.db.Set(k, v)
 		} else {
-			_, err = b.db.SetWithTTL(k, v, b.writeQueue[i].Ttl, &Options{ShouldWatch: false})
+			_, err = b.db.SetWithTTL(k, v, b.writeQueue[i].Ttl)
 		}
 		if err != nil {
 			return err

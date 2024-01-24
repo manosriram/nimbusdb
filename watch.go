@@ -10,8 +10,8 @@ type EventType string
 
 const (
 	Create EventType = "CREATE"
-	Update           = "UPDATE"
-	Delete           = "DELETE"
+	Update EventType = "UPDATE"
+	Delete EventType = "DELETE"
 )
 
 type WatcherEvent struct {

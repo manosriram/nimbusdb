@@ -1,15 +1,22 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/manosriram/nimbusdb"
+)
 
 func main() {
+	d, _ := nimbusdb.Open(&nimbusdb.Options{
+		Path:        "./",
+		ShouldWatch: true,
+	})
 
-	messages := make(chan string)
+	ch, _ := d.NewWatch()
 
-	go func() {
-		messages <- "ping"
-	}()
+	k := []byte("testkey1")
+	v := []byte("testvalue1")
+	d.Set(k, v)
 
-	msg := <-messages
-	fmt.Println(msg)
+	fmt.Printf("%v\n", <-ch)
 }

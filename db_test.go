@@ -12,7 +12,8 @@ import (
 )
 
 var opts = &Options{
-	Path: utils.DbDir(),
+	Path:        utils.DbDir(),
+	ShouldWatch: false,
 }
 
 const (
