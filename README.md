@@ -147,6 +147,61 @@ b.Commit() // write all pending writes to disk
 b.Rollback() // discard all pending writes
 ```
 
+#### Watch keys
+```go
+func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
+  for event := range ch {
+    switch event.EventType {
+      case "CREATE":
+        // Handle create key event
+        break
+
+      case "UPDATE":
+        // Handle update key event
+        break
+
+      case "DELETE":
+        // Handle delete key event
+        break
+    }
+  }
+}
+
+func main() {
+  d, err := nimbusdb.Open(&nimbusdb.Options{Path: "/path/to/data/directory", ShouldWatch: true})
+  if err != nil {
+    // handle error
+  }
+  defer d.Close()
+  defer d.CloseWatch() // optional
+  
+  watchChannel, err := d.Watch()
+  if err != nil {
+    // handle error
+  }
+  
+  go watchEvents(watchChannel)
+
+  kvPair := &nimbusdb.KeyValuePair{
+    Key:   []byte("key"),
+    Value: []byte("value"),
+  }
+  setValue, err := d.Set(kvPair) // will trigger an CREATE event
+  if err != nil {
+    // handle error
+  }
+
+  setValue, err := d.Set(kvPair) // will trigger an UPDATE event
+  if err != nil {
+    // handle error
+  }
+
+  err = d.Delete(kvPair.Key) // will trigger an DELETE event
+  if err != nil {
+    // handle error
+  }
+}
+```
 
 [Progress Board](https://trello.com/b/2eDSLLb3/nimbusdb) | [Streams](https://youtube.com/playlist?list=PLJALjJgNSDVo5veOf2apgMIE1QgN7IEfk) | [godoc](https://pkg.go.dev/github.com/manosriram/nimbusdb)
 

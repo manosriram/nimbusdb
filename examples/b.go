@@ -3,12 +3,20 @@ package main
 import (
 	"fmt"
 
-	"golang.org/x/exp/slices"
+	"github.com/manosriram/nimbusdb"
 )
 
 func main() {
-	x := []int{1, 2, 3}
+	d, _ := nimbusdb.Open(&nimbusdb.Options{
+		Path:        "./",
+		ShouldWatch: true,
+	})
 
-	slices.Delete(x, 0, 1)
-	fmt.Println(x)
+	ch, _ := d.NewWatch()
+
+	k := []byte("testkey1")
+	v := []byte("testvalue1")
+	d.Set(k, v)
+
+	fmt.Printf("%v\n", <-ch)
 }

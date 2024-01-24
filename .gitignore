@@ -6,3 +6,5 @@ concurrent_test_data
 nimbusdb_temp*
 benchmark/nimbusdb_temp*
 gcreport.txt
+*.dfile
+*.idfile

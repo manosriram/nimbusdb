@@ -93,9 +93,11 @@ const (
 )
 
 type Options struct {
-	IsMerge       bool
-	MergeFilePath string
-	Path          string
+	IsMerge        bool
+	MergeFilePath  string
+	Path           string
+	ShouldWatch    bool
+	WatchQueueSize int
 }
 
 type KeyValuePair struct {
@@ -133,9 +135,10 @@ type Db struct {
 	mu                    sync.RWMutex
 	segments              map[string]*Segment
 	lru                   *expirable.LRU[int64, *Block]
+	watcher               chan WatcherEvent
 }
 
-func NewDb(dirPath string) *Db {
+func NewDb(dirPath string, opts ...*Options) *Db {
 	segments := make(map[string]*Segment, 0)
 	db := &Db{
 		dirPath: dirPath,
@@ -145,6 +148,19 @@ func NewDb(dirPath string) *Db {
 		},
 		lru:      expirable.NewLRU[int64, *Block](LRU_SIZE, nil, LRU_TTL),
 		segments: segments,
+		opts: &Options{
+			ShouldWatch: false,
+		},
+	}
+
+	db.watcher = make(chan WatcherEvent, func() int {
+		if len(opts) > 0 {
+			return opts[0].WatchQueueSize
+		}
+		return 0
+	}())
+	if len(opts) > 0 {
+		db.opts.ShouldWatch = opts[0].ShouldWatch
 	}
 
 	return db
@@ -227,7 +243,6 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 		}
 		db.removeBlockCache(segment.getBlockNumber())
 	}
-
 	db.keyDir.Set(key, kdValue)
 	db.lastOffset.Store(kdValue.offset + kdValue.size)
 
@@ -471,7 +486,7 @@ func Open(opts *Options) (*Db, error) {
 
 		dirPath = utils.JoinPaths(home, DefaultDataDir)
 	}
-	db := NewDb(dirPath)
+	db := NewDb(dirPath, opts)
 	go db.handleInterrupt()
 
 	err := os.MkdirAll(dirPath, os.ModePerm)
@@ -527,6 +542,7 @@ func (db *Db) Close() error {
 		}
 	}
 	db.closed = true
+	close(db.watcher)
 	return nil
 }
 
@@ -592,6 +608,16 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
 
+	var existingValueForKey []byte
+	if db.opts.ShouldWatch {
+		existingValueEntryForKey, err := db.Get(k)
+		if err != nil {
+			existingValueForKey = nil
+		} else {
+			existingValueForKey = existingValueEntryForKey
+		}
+	}
+
 	newKeyValueEntry := &KeyValueEntry{
 		deleted: DELETED_FLAG_UNSET_VALUE,
 		offset:  db.getLastOffset(),
@@ -614,16 +640,35 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 
 	kdValue := NewKeyDirValue(newKeyValueEntry.offset, newKeyValueEntry.size, newKeyValueEntry.tstamp, utils.GetFilenameWithoutExtension(db.activeDataFile))
 	_, err = db.setKeyDir(k, *kdValue)
+
 	if err != nil {
 		return nil, err
 	}
 
+	// do not watch if ShouldWatch is set with options
+	if db.opts.ShouldWatch {
+		if existingValueForKey == nil {
+			db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, nil))
+		} else {
+			db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, nil))
+		}
+	}
 	return v, err
 }
 
 func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
+
+	var existingValueForKey []byte
+	if db.opts.ShouldWatch {
+		existingValueEntryForKey, err := db.Get(k)
+		if err != nil {
+			existingValueForKey = nil
+		} else {
+			existingValueForKey = existingValueEntryForKey
+		}
+	}
 
 	newKeyValueEntry := &KeyValueEntry{
 		deleted: DELETED_FLAG_UNSET_VALUE,
@@ -651,6 +696,14 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 		return nil, err
 	}
 
+	// do not watch if ShouldWatch is set with options
+	if db.opts.ShouldWatch {
+		if existingValueForKey == nil {
+			db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, nil))
+		} else {
+			db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, nil))
+		}
+	}
 	return v, err
 }
 
@@ -661,6 +714,9 @@ func (db *Db) Delete(key []byte) error {
 	defer db.mu.Unlock()
 
 	err := db.deleteKey(key)
+	if db.opts.ShouldWatch {
+		db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil, nil))
+	}
 	return err
 }
 
