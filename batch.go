@@ -212,10 +212,12 @@ func (b *Batch) Commit() error {
 			return err
 		}
 
-		if existingValueForKey == nil {
-			go b.db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, &b.id))
-		} else {
-			go b.db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, &b.id))
+		if b.db.opts.ShouldWatch {
+			if existingValueForKey == nil {
+				b.db.SendWatchEvent(NewCreateWatcherEvent(k, existingValueForKey, v, &b.id))
+			} else {
+				b.db.SendWatchEvent(NewUpdateWatcherEvent(k, existingValueForKey, v, &b.id))
+			}
 		}
 	}
 	b.writeQueue = nil
