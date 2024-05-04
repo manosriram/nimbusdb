@@ -71,12 +71,15 @@ defer d.Close()
 
 #### Set
 ```go
-kvPair := &nimbusdb.KeyValuePair{
-  Key:   []byte("key"),
-  Value: []byte("value"),
-  Ttl: 5 * time.Minute, // Optional, default is 1 week
+setValue, err := d.Set([]byte("key"), []byte("value"))
+if err != nil {
+  // handle error
 }
-setValue, err := d.Set(kvPair)
+```
+
+#### Set with expiry
+```go
+setValue, err := d.SetWithTTL([]byte("key"), []byte("value"), time.Second * 10)
 if err != nil {
   // handle error
 }
@@ -182,21 +185,17 @@ func main() {
   
   go watchEvents(watchChannel)
 
-  kvPair := &nimbusdb.KeyValuePair{
-    Key:   []byte("key"),
-    Value: []byte("value"),
-  }
-  setValue, err := d.Set(kvPair) // will trigger an CREATE event
+  setValue, err := d.Set([]byte("key"), []byte("value")) // will trigger an CREATE event
   if err != nil {
     // handle error
   }
 
-  setValue, err := d.Set(kvPair) // will trigger an UPDATE event
+  setValue, err := d.Set([]byte("key"), []byte("value")) // will trigger an UPDATE event
   if err != nil {
     // handle error
   }
 
-  err = d.Delete(kvPair.Key) // will trigger an DELETE event
+  err = d.Delete([]byte("key")) // will trigger an DELETE event
   if err != nil {
     // handle error
   }
