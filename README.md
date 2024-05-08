@@ -71,7 +71,7 @@ defer d.Close()
 
 #### Set
 ```go
-setValue, err := d.Set([]byte("key"), []byte("value"))
+key, err := d.Set([]byte("key"), []byte("value"))
 if err != nil {
   // handle error
 }
@@ -79,7 +79,7 @@ if err != nil {
 
 #### Set with expiry
 ```go
-setValue, err := d.SetWithTTL([]byte("key"), []byte("value"), time.Second * 10)
+key, err := d.SetWithTTL([]byte("key"), []byte("value"), time.Second * 10)
 if err != nil {
   // handle error
 }
@@ -175,17 +175,17 @@ func main() {
   
   go watchEvents(watchChannel)
 
-  setValue, err := d.Set([]byte("key"), []byte("value")) // will trigger an CREATE event
+  key, err := d.Set([]byte("key"), []byte("value")) // will trigger an CREATE event
   if err != nil {
     // handle error
   }
 
-  setValue, err := d.Set([]byte("key"), []byte("value")) // will trigger an UPDATE event
+  key, err := d.Set([]byte("key"), []byte("value")) // will trigger an UPDATE event
   if err != nil {
     // handle error
   }
 
-  err = d.Delete([]byte("key")) // will trigger an DELETE event
+  key, err = d.Delete([]byte("key")) // will trigger an DELETE event
   if err != nil {
     // handle error
   }
