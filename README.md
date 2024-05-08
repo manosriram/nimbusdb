@@ -71,12 +71,15 @@ defer d.Close()
 
 #### Set
 ```go
-kvPair := &nimbusdb.KeyValuePair{
-  Key:   []byte("key"),
-  Value: []byte("value"),
-  Ttl: 5 * time.Minute, // Optional, default is 1 week
+setValue, err := d.Set([]byte("key"), []byte("value"))
+if err != nil {
+  // handle error
 }
-key, err := d.Set(kvPair)
+```
+
+#### Set with expiry
+```go
+setValue, err := d.SetWithTTL([]byte("key"), []byte("value"), time.Second * 10)
 if err != nil {
   // handle error
 }
@@ -172,21 +175,17 @@ func main() {
   
   go watchEvents(watchChannel)
 
-  kvPair := &nimbusdb.KeyValuePair{
-    Key:   []byte("key"),
-    Value: []byte("value"),
-  }
-  key, err := d.Set(kvPair) // will trigger an CREATE event
+  setValue, err := d.Set([]byte("key"), []byte("value")) // will trigger an CREATE event
   if err != nil {
     // handle error
   }
 
-  key, err = d.Set(kvPair) // will trigger an UPDATE event
+  setValue, err := d.Set([]byte("key"), []byte("value")) // will trigger an UPDATE event
   if err != nil {
     // handle error
   }
 
-  key, err = d.Delete(kvPair.Key) // will trigger an DELETE event
+  err = d.Delete([]byte("key")) // will trigger an DELETE event
   if err != nil {
     // handle error
   }
@@ -196,4 +195,3 @@ func main() {
 [Progress Board](https://trello.com/b/2eDSLLb3/nimbusdb) | [Streams](https://youtube.com/playlist?list=PLJALjJgNSDVo5veOf2apgMIE1QgN7IEfk) | [godoc](https://pkg.go.dev/github.com/manosriram/nimbusdb)
 
 [![Go](https://github.com/manosriram/nimbusdb/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/manosriram/nimbusdb/actions/workflows/go.yml)
-[![CodeFactor](https://www.codefactor.io/repository/github/manosriram/nimbusdb/badge)](https://www.codefactor.io/repository/github/manosriram/nimbusdb)
