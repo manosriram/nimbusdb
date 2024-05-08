@@ -126,7 +126,7 @@ func Test_Delete(t *testing.T) {
 
 	key := []byte("testkey")
 	// value := []byte("testvalue")
-	err = d.Delete(key)
+	_, err = d.Delete(key)
 	assert.Equal(t, nil, err)
 
 	_, err = d.Get(key)
@@ -152,7 +152,7 @@ func Test_InMemory_Delete(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, value, va)
 
-	err = d.Delete(key)
+	_, err = d.Delete(key)
 	assert.Equal(t, nil, err)
 
 	va, err = d.Get(key)
@@ -261,7 +261,7 @@ func Test_ConcurrentDelete(t *testing.T) {
 		}
 		go func() {
 			defer wg.Done()
-			err := d.Delete(kv.Key)
+			_, err := d.Delete(kv.Key)
 			assert.Nil(t, err)
 
 			_, err = d.Get(kv.Key)

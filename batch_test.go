@@ -180,7 +180,7 @@ func Test_Batch_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, value, va)
 
-	err = b.Delete(key)
+	_, err = b.Delete(key)
 	assert.Nil(t, err)
 
 	_, err = d.Get(key)
@@ -270,7 +270,7 @@ func Test_Batch_ConcurrentDelete(t *testing.T) {
 		key := []byte(utils.GetTestKey(i))
 		go func() {
 			defer wg.Done()
-			err := b.Delete(key)
+			_, err := b.Delete(key)
 			assert.Nil(t, err)
 
 			_, err = b.Get(key)

@@ -156,11 +156,11 @@ func (b *Batch) SetWithTTL(k []byte, v []byte, ttl time.Duration) ([]byte, error
 	return v, nil
 }
 
-func (b *Batch) Delete(k []byte) error {
+func (b *Batch) Delete(k []byte) ([]byte, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.closed {
-		return ERROR_BATCH_CLOSED
+		return nil, ERROR_BATCH_CLOSED
 	}
 
 	index := -1
@@ -176,13 +176,13 @@ func (b *Batch) Delete(k []byte) error {
 		b.writeQueue[len(b.writeQueue)-1] = nil
 		b.writeQueue = b.writeQueue[:len(b.writeQueue)-1]
 	} else {
-		err := b.db.Delete(k)
+		_, err := b.db.Delete(k)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return nil
+		return k, nil
 	}
-	return nil
+	return k, nil
 }
 
 func (b *Batch) Commit() error {

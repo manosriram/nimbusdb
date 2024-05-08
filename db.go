@@ -656,7 +656,7 @@ func (db *Db) Set(k []byte, v []byte) ([]byte, error) {
 	return v, err
 }
 
-func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, error) {
+func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) ([]byte, error) {
 	intKSz := int64(len(k))
 	intVSz := int64(len(utils.Encode(v)))
 
@@ -709,15 +709,15 @@ func (db *Db) SetWithTTL(k []byte, v []byte, ttl time.Duration) (interface{}, er
 
 // Deletes a key-value pair.
 // Returns error if any.
-func (db *Db) Delete(key []byte) error {
+func (db *Db) Delete(k []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	err := db.deleteKey(key)
+	err := db.deleteKey(k)
 	if db.opts.ShouldWatch {
-		db.SendWatchEvent(NewDeleteWatcherEvent(key, nil, nil, nil))
+		db.SendWatchEvent(NewDeleteWatcherEvent(k, nil, nil, nil))
 	}
-	return err
+	return k, err
 }
 
 func (db *Db) walk(s string, file fs.DirEntry, err error) error {

@@ -76,7 +76,7 @@ kvPair := &nimbusdb.KeyValuePair{
   Value: []byte("value"),
   Ttl: 5 * time.Minute, // Optional, default is 1 week
 }
-setValue, err := d.Set(kvPair)
+key, err := d.Set(kvPair)
 if err != nil {
   // handle error
 }
@@ -94,17 +94,7 @@ if err != nil {
 #### Delete
 
 ```go
-value, err := d.Delete([]byte("key"))
-if err != nil {
-  // handle error
-}
-```
-
-#### Sync
-This does the merge process. This can be an expensive operation, hence it is better to run this periodically and whenever the traffic is low.
-
-```go
-err := d.Sync()
+key, err := d.Delete([]byte("key"))
 if err != nil {
   // handle error
 }
@@ -123,7 +113,7 @@ if err != nil {
 }
 defer b.Close()
 
-_, err = b.Set([]byte("key"), []byte("value")) // not written to disk yet.
+key, err = b.Set([]byte("key"), []byte("value")) // not written to disk yet.
 if err != nil {
   // handle error
 }
@@ -133,7 +123,7 @@ if err != nil {
   // handle error
 }
 
-err = b.Delete([]byte("key"))
+key, err = b.Delete([]byte("key"))
 if err != nil {
   // handle error
 }
@@ -186,17 +176,17 @@ func main() {
     Key:   []byte("key"),
     Value: []byte("value"),
   }
-  setValue, err := d.Set(kvPair) // will trigger an CREATE event
+  key, err := d.Set(kvPair) // will trigger an CREATE event
   if err != nil {
     // handle error
   }
 
-  setValue, err := d.Set(kvPair) // will trigger an UPDATE event
+  key, err = d.Set(kvPair) // will trigger an UPDATE event
   if err != nil {
     // handle error
   }
 
-  err = d.Delete(kvPair.Key) // will trigger an DELETE event
+  key, err = d.Delete(kvPair.Key) // will trigger an DELETE event
   if err != nil {
     // handle error
   }
