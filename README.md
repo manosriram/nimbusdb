@@ -97,17 +97,7 @@ if err != nil {
 #### Delete
 
 ```go
-value, err := d.Delete([]byte("key"))
-if err != nil {
-  // handle error
-}
-```
-
-#### Sync
-This does the merge process. This can be an expensive operation, hence it is better to run this periodically and whenever the traffic is low.
-
-```go
-err := d.Sync()
+key, err := d.Delete([]byte("key"))
 if err != nil {
   // handle error
 }
@@ -126,7 +116,7 @@ if err != nil {
 }
 defer b.Close()
 
-_, err = b.Set([]byte("key"), []byte("value")) // not written to disk yet.
+key, err = b.Set([]byte("key"), []byte("value")) // not written to disk yet.
 if err != nil {
   // handle error
 }
@@ -136,7 +126,7 @@ if err != nil {
   // handle error
 }
 
-err = b.Delete([]byte("key"))
+key, err = b.Delete([]byte("key"))
 if err != nil {
   // handle error
 }

@@ -85,7 +85,7 @@ func Test_Watch_Delete(t *testing.T) {
 	_, err = d.Set(k, v)
 	assert.Nil(t, err)
 
-	err = d.Delete(k)
+	_, err = d.Delete(k)
 	assert.Nil(t, err)
 
 	createEvent := <-ch
