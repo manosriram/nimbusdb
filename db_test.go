@@ -12,7 +12,8 @@ import (
 )
 
 var opts = &Options{
-	Path:        utils.DbDir(),
+	// Path:        utils.DbDir(),
+	Path:        "/Users/manosriram/nimbusdb/test_data",
 	ShouldWatch: false,
 }
 
@@ -118,6 +119,32 @@ func Test_Get(t *testing.T) {
 	assert.Equal(t, value, va)
 }
 
+func Test_Get_With_Revision(t *testing.T) {
+	d, err := Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	key := []byte("testrevisionkey")
+	firstValue := []byte("testvalue")
+	updatedValue := []byte("updatedvalue")
+
+	_, err = d.Set(key, firstValue)
+	assert.Nil(t, err)
+
+	_, err = d.Set(key, updatedValue)
+	assert.Nil(t, err)
+
+	v1, err := d.GetUsingRevision(key, 1)
+	assert.Nil(t, err)
+
+	v2, err := d.GetUsingRevision(key, 2)
+	assert.Nil(t, err)
+
+	assert.Equal(t, v1, firstValue)
+	assert.Equal(t, v2, updatedValue)
+}
+
 func Test_Delete(t *testing.T) {
 	d, err := Open(opts)
 	defer d.Close()
@@ -194,6 +221,35 @@ func Test_StressGet(t *testing.T) {
 	})
 }
 
+func Test_StressGetRevision(t *testing.T) {
+	d, err := Open(opts)
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	defer d.Close()
+	var values []string
+
+	for i := 0; i < 5; i++ {
+		key := []byte("getrevision-test")
+		value := []byte("testvalue")
+
+		_, err := d.Set(key, value)
+		assert.Nil(t, err)
+
+		values = append(values, string(value))
+	}
+
+	for i := 0; i < 5; i++ {
+		key := []byte("getrevision-test")
+		v, err := d.GetUsingRevision(key, int64(i+1))
+		assert.Nil(t, err)
+		assert.Equal(t, values[i], string(v))
+	}
+	// t.Cleanup(func() {
+	// os.RemoveAll(opts.Path)
+	// })
+}
+
 func Test_ConcurrentSet(t *testing.T) {
 	d, err := Open(opts)
 	defer d.Close()
@@ -239,6 +295,41 @@ func Test_ConcurrentGet(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, kv.Value, v)
 		}()
+	}
+	wg.Wait()
+}
+
+func Test_ConcurrentGetRevision(t *testing.T) {
+	d, err := Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	numGoRoutines := 25
+
+	wg := sync.WaitGroup{}
+	wg.Add(numGoRoutines)
+
+	var revisionValues []string
+	for i := 0; i < numGoRoutines; i++ {
+		v := []byte(fmt.Sprintf("testrevisionvalue-%d", i))
+		_, err := d.Set([]byte("testrevision-c"), v)
+
+		revisionValues = append(revisionValues, string(v))
+		assert.Nil(t, err)
+	}
+
+	for i := 0; i < numGoRoutines; i++ {
+		kv := &KeyValuePair{
+			Key: []byte("testrevision-c"),
+		}
+		go func(I int) {
+			defer wg.Done()
+			vv, err := d.GetUsingRevision(kv.Key, int64(I+1))
+			fmt.Println(vv, string(vv))
+			assert.Nil(t, err)
+			assert.Equal(t, revisionValues[I], string(vv))
+		}(i)
 	}
 	wg.Wait()
 }

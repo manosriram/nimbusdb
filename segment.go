@@ -5,25 +5,6 @@ import (
 	"path/filepath"
 )
 
-// Segment represents an entire file. It is divided into Blocks.
-// Each Segment is a collection of Blocks of size 32KB. A file pointer is kept opened for reading purposes.
-// closed represents the state of the Segment's file pointer.
-type Segment struct {
-	closed             bool
-	currentBlockNumber int64
-	currentBlockOffset int64
-	path               string
-	blocks             map[int64]*BlockOffsetPair
-	fp                 *os.File
-}
-
-// BlockOffsetPair contains metadata about the Block. The start and ending offsets of the Block, and the path.
-type BlockOffsetPair struct {
-	startOffset int64
-	endOffset   int64
-	filePath    string
-}
-
 func (db *Db) getSegmentBlock(path string, blockNumber int64) (*BlockOffsetPair, bool) {
 	segment, ok := db.segments[path]
 	if !ok {
@@ -54,7 +35,7 @@ func (seg *Segment) getBlockNumber() int64 {
 }
 
 func (seg *Segment) getFp() *os.File {
-	return seg.fp
+	return seg.filepointer
 }
 
 func (seg *Segment) getPath() string {
@@ -66,12 +47,12 @@ func (seg *Segment) setPath(path string) {
 }
 
 func (seg *Segment) setFp(fp *os.File) {
-	seg.fp = fp
+	seg.filepointer = fp
 }
 
 func (seg *Segment) closeFp() error {
 	if !seg.closed {
-		err := seg.fp.Close()
+		err := seg.filepointer.Close()
 		if err != nil {
 			return err
 		}
@@ -93,7 +74,7 @@ func (seg *Segment) setBlock(blockNumber int64, block *BlockOffsetPair) {
 }
 
 func (db *Db) getSegmentFilePointerFromPath(keyDirPath string) (*os.File, error) {
-	path := filepath.Join(db.dirPath, keyDirPath)
+	path := filepath.Join(db.dbDirPath, keyDirPath)
 	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err

@@ -3,7 +3,6 @@ package nimbusdb
 import (
 	"bytes"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
@@ -14,15 +13,6 @@ var (
 	ERROR_BATCH_CLOSED              = errors.New("batch is closed")
 	ERROR_CANNOT_CLOSE_CLOSED_BATCH = errors.New("cannot close closed batch")
 )
-
-type Batch struct {
-	id         ksuid.KSUID
-	db         *Db
-	closed     bool
-	batchlock  sync.Mutex
-	mu         sync.RWMutex
-	writeQueue []*KeyValuePair
-}
 
 func (db *Db) NewBatch() (*Batch, error) {
 	b := &Batch{
@@ -73,11 +63,11 @@ func (b *Batch) Get(k []byte) ([]byte, error) {
 		return utils.Encode(record.Value), nil
 	}
 
-	v, err := b.db.getKeyDir(k) // else, search datafiles
+	v, err := b.db.getKeyDirUsingKey(k) // else, search datafiles
 	if err != nil {
 		return nil, err
 	}
-	return v.v, nil
+	return v.value, nil
 }
 
 func (b *Batch) Exists(k []byte) (bool, error) {
@@ -98,11 +88,11 @@ func (b *Batch) Exists(k []byte) (bool, error) {
 		return true, nil
 	}
 
-	v, err := b.db.getKeyDir(k) // else, search datafiles
+	v, err := b.db.getKeyDirUsingKey(k) // else, search datafiles
 	if err != nil {
 		return false, err
 	}
-	return bytes.Equal(v.k, k), nil
+	return bytes.Equal(v.key, k), nil
 }
 
 func (b *Batch) Set(k []byte, v []byte) ([]byte, error) {
