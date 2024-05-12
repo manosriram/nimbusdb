@@ -2,6 +2,7 @@ package nimbusdb
 
 import (
 	"bytes"
+	"strings"
 	"sync"
 
 	"github.com/google/btree"
@@ -14,12 +15,24 @@ type BTree struct {
 }
 
 type item struct {
-	key []byte
-	v   KeyDirValue
+	key      []byte
+	v        KeyDirValue
+	revision int64
 }
 
-func (it item) Less(i btree.Item) bool {
-	return bytes.Compare(it.key, i.(*item).key) < 0
+func (i item) Less(other btree.Item) bool {
+	otherItem := other.(*item)
+
+	if bytes.Equal(i.key, otherItem.key) {
+		switch i.revision {
+		case 0:
+			return i.revision > otherItem.revision
+		default:
+			return i.revision < otherItem.revision
+		}
+	}
+	return bytes.Compare(i.key, otherItem.key) < 0
+
 }
 
 func (b *BTree) Get(key []byte) *KeyDirValue {
@@ -27,11 +40,21 @@ func (b *BTree) Get(key []byte) *KeyDirValue {
 	if i == nil {
 		return nil
 	}
-	return &i.(*item).v
+	v := &i.(*item).v
+	return v
+}
+
+func (b *BTree) GetUsingRevision(key []byte, revision int64) *KeyDirValue {
+	i := b.tree.Get(&item{key: key, revision: revision})
+	if i == nil {
+		return nil
+	}
+	v := &i.(*item).v
+	return v
 }
 
 func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
-	i := b.tree.ReplaceOrInsert(&item{key: key, v: value})
+	i := b.tree.ReplaceOrInsert(&item{key: key, v: value, revision: value.revision})
 	if i != nil {
 		return &i.(*item).v
 	}
@@ -62,4 +85,14 @@ func (b *BTree) List() []*KeyValuePair {
 		return true
 	})
 	return pairs
+}
+
+func (b *BTree) AscendWithPrefix(prefix string, handler func(k []byte)) {
+	b.tree.Ascend(func(it btree.Item) bool {
+		key := it.(*item).key
+		if strings.HasPrefix(string(key), prefix) {
+			handler(key)
+		}
+		return true
+	})
 }

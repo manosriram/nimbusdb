@@ -8,7 +8,8 @@ build:
 	go build -v
 
 clean:
-	rm -rf ./nimbusdb_temp* benchmark/nimbusdb_temp*
+	rm -rf ./nimbusdb_temp* benchmark/nimbusdb_temp* ~/nimbusdb/test_data
+	mkdir -p ~/nimbusdb/test_data
 
 test:
 	go test -v -failfast
