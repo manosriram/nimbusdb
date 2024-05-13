@@ -3,6 +3,7 @@ package nimbusdb
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -162,27 +163,6 @@ func Test_InMemory_Delete(t *testing.T) {
 	})
 }
 
-func Test_StressSetWithTTL(t *testing.T) {
-	d, err := Open(opts)
-	defer d.Close()
-	assert.Equal(t, err, nil)
-	assert.NotEqual(t, d, nil)
-
-	for i := 0; i < 500000; i++ {
-		key := []byte(utils.GetTestKey(i))
-		value := []byte("testvalue")
-		_, err := d.SetWithTTL(key, value, time.Second*10)
-		assert.Nil(t, err)
-	}
-
-	for i := 0; i < 500000; i++ {
-		key := []byte(utils.GetTestKey(i))
-		value := []byte("testvalue")
-		_, err := d.SetWithTTL(key, value, time.Second*25)
-		assert.Nil(t, err)
-	}
-}
-
 func Test_StressSet(t *testing.T) {
 	d, err := Open(opts)
 	defer d.Close()
@@ -210,6 +190,43 @@ func Test_StressGet(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, value, v)
 	}
+	t.Cleanup(func() {
+		os.RemoveAll(opts.Path)
+	})
+}
+
+func Test_Merge(t *testing.T) {
+	d, err := Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	for i := 0; i < 100000; i++ {
+		key := []byte(utils.GetTestKey(i))
+		value := []byte("testvalue")
+		_, err := d.SetWithTTL(key, value, 2*time.Second)
+		assert.Nil(t, err)
+	}
+	time.Sleep(2 * time.Second)
+
+	for i := 100000; i < 200000; i++ {
+		key := []byte(utils.GetTestKey(i))
+		value := []byte("testvalue")
+		_, err := d.SetWithTTL(key, value, 2*time.Minute)
+		assert.Nil(t, err)
+	}
+
+	filesBeforeMerge, err := filepath.Glob(filepath.Join(opts.Path, "*"))
+	assert.Nil(t, err)
+
+	err = d.Merge()
+	assert.Nil(t, err)
+
+	filesAfterMerge, err := filepath.Glob(filepath.Join(opts.Path, "*"))
+	assert.Nil(t, err)
+
+	assert.NotEqual(t, len(filesAfterMerge), len(filesBeforeMerge))
+
 	t.Cleanup(func() {
 		os.RemoveAll(opts.Path)
 	})

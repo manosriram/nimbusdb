@@ -748,7 +748,6 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 
 	for _, z := range keys {
 		if (z.Endoffset-z.Startoffset)+info.Size() > DatafileThreshold {
-			fmt.Println("data threshold reached, moving swp to idfile")
 			db.closeActiveMergeDataFilePointer()
 			swapFilename := strings.Split(newPath, ".")[0]
 			err = os.Rename(newPath, fmt.Sprintf("%s.idfile", swapFilename))
@@ -756,12 +755,9 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 				return err
 			}
 			db.initMergeDataFilePointer()
-			fmt.Println("creating new merge file ", db.mergeActiveDataFile)
 		}
 		activeMergeFilePointer.WriteAt(d[z.Startoffset:z.Endoffset], z.Startoffset)
 	}
-	swapFilename := strings.Split(newPath, ".")[0]
-	err = os.Rename(newPath, fmt.Sprintf("%s.idfile", swapFilename))
 	return nil
 }
 
@@ -771,8 +767,21 @@ func (db *Db) Merge() error {
 	defer db.closeActiveMergeDataFilePointer()
 	err := filepath.WalkDir(db.dirPath, db.walk)
 	if err != nil {
-		fmt.Println(err)
 		return err
+	}
+
+	files, err := filepath.Glob(filepath.Join(db.dirPath, "*.swp"))
+	if err != nil {
+		return err
+	}
+
+	// Rename remaining swap files to idfile
+	for _, file := range files {
+		ff := strings.Split(file, ".")[0]
+		err := os.Rename(file, fmt.Sprintf("%s.idfile", ff))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

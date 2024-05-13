@@ -10,7 +10,6 @@ build:
 clean:
 	rm -rf ./nimbusdb_temp* benchmark/nimbusdb_temp*
 	rm -rf ~/nimbusdb/test_data
-	rm -rf ./dd
 
 test:
 	go test -v -failfast

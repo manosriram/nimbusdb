@@ -83,7 +83,7 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-		case "sync":
+		case "merge":
 			d.Merge()
 		case "keyreader":
 			prefix := ""
