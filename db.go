@@ -38,7 +38,7 @@ type Db struct {
 	activeDataFile             string
 	activeDataFilePointer      *os.File
 	mergeActiveDataFile        string
-	mergeActiveDataFilePointer *os.File
+	activeMergeDataFilePointer *os.File
 
 	keyDir     *BTree
 	opts       *Options
@@ -98,11 +98,25 @@ func (db *Db) getLastOffset() int64 {
 	return db.lastOffset.Load()
 }
 
+func (db *Db) getActiveMergeDataFilePointer() (*os.File, error) {
+	if db.activeMergeDataFilePointer == nil {
+		return nil, ERROR_NO_ACTIVE_MERGE_FILE_OPENED
+	}
+	return db.activeMergeDataFilePointer, nil
+}
+
 func (db *Db) getActiveDataFilePointer() (*os.File, error) {
 	if db.activeDataFilePointer == nil {
 		return nil, ERROR_NO_ACTIVE_FILE_OPENED
 	}
 	return db.activeDataFilePointer, nil
+}
+
+func (db *Db) closeActiveMergeDataFilePointer() error {
+	if db.activeMergeDataFilePointer != nil {
+		return db.activeMergeDataFilePointer.Close()
+	}
+	return nil
 }
 
 func (db *Db) closeActiveDataFilePointer() error {
@@ -696,14 +710,18 @@ func (db *Db) initMergeDataFilePointer() {
 	if err != nil {
 		fmt.Println("error init merge ", err.Error())
 	}
-	db.mergeActiveDataFilePointer = file
+	db.activeMergeDataFilePointer = file
 	db.mergeActiveDataFile = file.Name()
 }
 
 func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 
-	if db.mergeActiveDataFilePointer == nil {
+	if db.activeMergeDataFilePointer == nil {
 		db.initMergeDataFilePointer()
+	}
+	activeMergeFilePointer, err := db.getActiveMergeDataFilePointer()
+	if err != nil {
+		return err
 	}
 
 	if path.Ext(file.Name()) != InactiveKeyValueEntryDataFileSuffix {
@@ -711,7 +729,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	}
 
 	oldPath := utils.JoinPaths(db.dirPath, file.Name())
-	newPath := utils.GetSwapFilePath(db.dirPath, db.mergeActiveDataFilePointer.Name())
+	newPath := utils.GetSwapFilePath(db.dirPath, db.activeMergeDataFilePointer.Name())
 	keys, d, err := db.getActiveKeyValueEntriesInFile(oldPath)
 	if err != nil {
 		return err
@@ -723,7 +741,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 		return nil
 	}
 
-	info, err := db.mergeActiveDataFilePointer.Stat()
+	info, err := activeMergeFilePointer.Stat()
 	if err != nil {
 		return err
 	}
@@ -731,7 +749,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 	for _, z := range keys {
 		if (z.Endoffset-z.Startoffset)+info.Size() > DatafileThreshold {
 			fmt.Println("data threshold reached, moving swp to idfile")
-			db.mergeActiveDataFilePointer.Close()
+			db.closeActiveMergeDataFilePointer()
 			swapFilename := strings.Split(newPath, ".")[0]
 			err = os.Rename(newPath, fmt.Sprintf("%s.idfile", swapFilename))
 			if err != nil {
@@ -740,16 +758,17 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 			db.initMergeDataFilePointer()
 			fmt.Println("creating new merge file ", db.mergeActiveDataFile)
 		}
-		db.mergeActiveDataFilePointer.WriteAt(d[z.Startoffset:z.Endoffset], z.Startoffset)
+		activeMergeFilePointer.WriteAt(d[z.Startoffset:z.Endoffset], z.Startoffset)
 	}
+	swapFilename := strings.Split(newPath, ".")[0]
+	err = os.Rename(newPath, fmt.Sprintf("%s.idfile", swapFilename))
 	return nil
 }
 
 // Syncs the database. Will remove all expired/deleted keys from disk.
 // Since items are removed, disk usage will reduce.
-func (db *Db) Sync() error {
-	// db.initMergeDataFilePointer()
-
+func (db *Db) Merge() error {
+	defer db.closeActiveMergeDataFilePointer()
 	err := filepath.WalkDir(db.dirPath, db.walk)
 	if err != nil {
 		fmt.Println(err)

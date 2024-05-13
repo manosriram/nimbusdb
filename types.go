@@ -55,13 +55,14 @@ const (
 )
 
 var (
-	ERROR_KEY_NOT_FOUND             = errors.New("key expired or does not exist")
-	ERROR_NO_ACTIVE_FILE_OPENED     = errors.New("no file opened for writing")
-	ERROR_OFFSET_EXCEEDED_FILE_SIZE = errors.New("offset exceeded file size")
-	ERROR_CANNOT_READ_FILE          = errors.New("error reading file")
-	ERROR_KEY_VALUE_SIZE_EXCEEDED   = errors.New(fmt.Sprintf("exceeded limit of %d bytes", BlockSize))
-	ERROR_CRC_DOES_NOT_MATCH        = errors.New("crc does not match. corrupted datafile")
-	ERROR_DB_CLOSED                 = errors.New("database is closed")
+	ERROR_KEY_NOT_FOUND               = errors.New("key expired or does not exist")
+	ERROR_NO_ACTIVE_FILE_OPENED       = errors.New("no file opened for writing")
+	ERROR_NO_ACTIVE_MERGE_FILE_OPENED = errors.New("no merge file opened for writing")
+	ERROR_OFFSET_EXCEEDED_FILE_SIZE   = errors.New("offset exceeded file size")
+	ERROR_CANNOT_READ_FILE            = errors.New("error reading file")
+	ERROR_KEY_VALUE_SIZE_EXCEEDED     = errors.New(fmt.Sprintf("exceeded limit of %d bytes", BlockSize))
+	ERROR_CRC_DOES_NOT_MATCH          = errors.New("crc does not match. corrupted datafile")
+	ERROR_DB_CLOSED                   = errors.New("database is closed")
 )
 
 var (
