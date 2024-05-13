@@ -2,27 +2,11 @@ package nimbusdb
 
 import (
 	"bytes"
-	"errors"
-	"sync"
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
 	"github.com/segmentio/ksuid"
 )
-
-var (
-	ERROR_BATCH_CLOSED              = errors.New("batch is closed")
-	ERROR_CANNOT_CLOSE_CLOSED_BATCH = errors.New("cannot close closed batch")
-)
-
-type Batch struct {
-	id         ksuid.KSUID
-	db         *Db
-	closed     bool
-	batchlock  sync.Mutex
-	mu         sync.RWMutex
-	writeQueue []*KeyValuePair
-}
 
 func (db *Db) NewBatch() (*Batch, error) {
 	b := &Batch{

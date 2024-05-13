@@ -162,6 +162,27 @@ func Test_InMemory_Delete(t *testing.T) {
 	})
 }
 
+func Test_StressSetWithTTL(t *testing.T) {
+	d, err := Open(opts)
+	defer d.Close()
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, d, nil)
+
+	for i := 0; i < 500000; i++ {
+		key := []byte(utils.GetTestKey(i))
+		value := []byte("testvalue")
+		_, err := d.SetWithTTL(key, value, time.Second*10)
+		assert.Nil(t, err)
+	}
+
+	for i := 0; i < 500000; i++ {
+		key := []byte(utils.GetTestKey(i))
+		value := []byte("testvalue")
+		_, err := d.SetWithTTL(key, value, time.Second*25)
+		assert.Nil(t, err)
+	}
+}
+
 func Test_StressSet(t *testing.T) {
 	d, err := Open(opts)
 	defer d.Close()

@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/nimbusdb/test_data"
+	// DirPath = "/Users/manosriram/nimbusdb/test_data"
+	DirPath = "./dd/"
 )
 
 func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
