@@ -309,7 +309,6 @@ func (db *Db) getActiveKeyValueEntriesInFile(filePath string) ([]*ActiveKeyValue
 				offset += keyValueEntry.size
 				break
 			}
-
 			offset += keyValueEntry.size
 			continue
 		}
@@ -321,17 +320,6 @@ func (db *Db) getActiveKeyValueEntriesInFile(filePath string) ([]*ActiveKeyValue
 				Startoffset: previousOffset,
 				Endoffset:   offset,
 			})
-			// fileName := utils.GetFilenameWithoutExtension(filePath)
-			// kdValue := KeyDirValue{
-			// offset: keyValueEntry.offset,
-			// size:   keyValueEntry.size,
-			// path:   fileName,
-			// tstamp: keyValueEntry.tstamp,
-			// }
-			// _, err := db.setKeyDir(keyValueEntry.k, kdValue) // TODO: use Set here?
-			// if err != nil {
-			// return err
-			// }
 		}
 
 		previousOffset = offset
