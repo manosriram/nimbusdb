@@ -37,7 +37,7 @@ type Db struct {
 
 	activeDataFile             string
 	activeDataFilePointer      *os.File
-	mergeActiveDataFile        string
+	activeMergeDataFile        string
 	activeMergeDataFilePointer *os.File
 
 	keyDir     *BTree
@@ -693,17 +693,19 @@ func (db *Db) Delete(k []byte) ([]byte, error) {
 	return k, err
 }
 
+// Sets db.activeMergeDataFilePointer to a newly created .swp file
+// Sets db.activeDataFile to above pointer's name string
 func (db *Db) initMergeDataFilePointer() {
 	file, err := os.CreateTemp(db.dirPath, SwapFilePattern)
 	if err != nil {
 		fmt.Println("error init merge ", err.Error())
 	}
 	db.activeMergeDataFilePointer = file
-	db.mergeActiveDataFile = file.Name()
+	db.activeMergeDataFile = file.Name()
 }
 
+// For each file inside dirPath
 func (db *Db) walk(s string, file fs.DirEntry, err error) error {
-
 	if db.activeMergeDataFilePointer == nil {
 		db.initMergeDataFilePointer()
 	}
@@ -723,6 +725,8 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 		return err
 	}
 
+	// If there are no active keys in the current .idfile,
+	// remove the created paths and return
 	if len(keys) == 0 {
 		os.Remove(oldPath)
 		os.Remove(newPath)
@@ -734,6 +738,11 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 		return err
 	}
 
+	// For every active key, write it to db.activeMergeDataFile
+	// If the current iteration's key size > DatafileThreshold,
+	// close the current activeMergeDataFilePointer,
+	// rename the .swp file to .idfile,
+	// and create a new swap file
 	for _, z := range keys {
 		if (z.Endoffset-z.Startoffset)+info.Size() > DatafileThreshold {
 			db.closeActiveMergeDataFilePointer()
@@ -758,12 +767,12 @@ func (db *Db) Merge() error {
 		return err
 	}
 
+	// After finishing the merge process, convert left over swap files (if any)
+	// to .idfile
 	files, err := filepath.Glob(filepath.Join(db.dirPath, "*.swp"))
 	if err != nil {
 		return err
 	}
-
-	// Rename remaining swap files to idfile
 	for _, file := range files {
 		ff := strings.Split(file, ".")[0]
 		err := os.Rename(file, fmt.Sprintf("%s.idfile", ff))
