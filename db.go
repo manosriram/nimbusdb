@@ -20,6 +20,7 @@ import (
 	"github.com/google/btree"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	utils "github.com/manosriram/nimbusdb/utils"
+	"go.uber.org/zap"
 )
 
 func NewKeyDirValue(offset, size, tstamp int64, path string) *KeyDirValue {
@@ -48,10 +49,15 @@ type Db struct {
 	segments   map[string]*Segment
 	lru        *expirable.LRU[int64, *Block]
 	watcher    chan WatcherEvent
+	lo         *zap.Logger
 }
 
 func NewDb(dirPath string, opts ...*Options) *Db {
 	segments := make(map[string]*Segment, 0)
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("error creating logger: %s\n", err.Error())
+	}
 	db := &Db{
 		dirPath: dirPath,
 		closed:  false,
@@ -63,6 +69,7 @@ func NewDb(dirPath string, opts ...*Options) *Db {
 		opts: &Options{
 			ShouldWatch: false,
 		},
+		lo: logger,
 	}
 
 	db.watcher = make(chan WatcherEvent, func() int {
@@ -494,12 +501,14 @@ func Open(opts *Options) (*Db, error) {
 
 		return nil
 	})
+	db.lo.Info("nimbusdb initiated")
 	return db, nil
 }
 
 // Closes the database. Closes the file pointer used to read/write the activeDataFile.
 // Closes all file inactiveDataFile pointers and marks them as closed.
 func (db *Db) Close() error {
+	defer db.lo.Sync()
 	if db.activeDataFilePointer != nil {
 		err := db.activeDataFilePointer.Close()
 		return err
@@ -699,7 +708,8 @@ func (db *Db) Delete(k []byte) ([]byte, error) {
 func (db *Db) initMergeDataFilePointer() {
 	file, err := os.CreateTemp(db.dirPath, SwapFilePattern)
 	if err != nil {
-		fmt.Println("error init merge ", err.Error())
+		db.lo.Error("error initiating merge data file pointer", zap.String("err", err.Error()))
+		// fmt.Println("error init merge ", err.Error())
 	}
 	db.activeMergeDataFilePointer = file
 	db.activeMergeDataFile = file.Name()

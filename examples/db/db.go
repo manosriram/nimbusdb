@@ -32,7 +32,10 @@ func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
 }
 
 func main() {
-	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath, WatchQueueSize: 10})
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: DirPath, WatchQueueSize: 10})
+	if err != nil {
+		log.Fatalf("error opening db %s\n", err.Error())
+	}
 	defer d.Close()
 
 	ch, _ := d.NewWatch()
