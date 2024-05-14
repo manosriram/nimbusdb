@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	DirPath = "/Users/manosriram/nimbusdb/test_data"
+	// DirPath = "/Users/manosriram/nimbusdb/test_data"
+	DirPath = "./dd/"
 )
 
 func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
@@ -82,8 +83,8 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println(string(z))
-		case "sync":
-			d.Sync()
+		case "merge":
+			d.Merge()
 		case "keyreader":
 			prefix := ""
 			d.KeyReader(prefix, func(k []byte) {

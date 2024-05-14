@@ -34,7 +34,7 @@ As time passes, expired or deleted keys take up space that is not useful. Hence,
   <summary>
   Supports Merge
   </summary>
-  Supports `Sync` which can be called periodically to remove expired/deleted keys from disk and free-up more space.
+  Supports `Merge` which can be called periodically to remove expired/deleted keys from disk and free-up space.
 </details>
 
 <details>
@@ -98,6 +98,15 @@ if err != nil {
 
 ```go
 key, err := d.Delete([]byte("key"))
+if err != nil {
+  // handle error
+}
+```
+
+#### Merge
+
+```go
+err := d.Merge()
 if err != nil {
   // handle error
 }

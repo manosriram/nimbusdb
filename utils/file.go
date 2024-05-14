@@ -33,6 +33,10 @@ func RandomValue(n int) []byte {
 	return []byte("nimbusdb_test_value_" + string(b))
 }
 
+func GetSwapFilePath(dbDirPath string, idFilePath string) string {
+	return fmt.Sprintf("%s/%s.swp", dbDirPath, strings.Split(idFilePath, ".")[0])
+}
+
 func TimeUntilUnixNano(tstamp int64) time.Duration {
 	return time.Until(time.Unix(0, tstamp))
 }

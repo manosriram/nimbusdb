@@ -124,9 +124,6 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	tstamp64Bit := utils.ByteToInt64(tstamp)
 
 	hasTimestampExpired := utils.HasTimestampExpired(tstamp64Bit)
-	if hasTimestampExpired {
-		return nil, ERROR_KEY_NOT_FOUND
-	}
 
 	// get key size
 	ksz := data[offset+TstampOffset : offset+KeySizeOffset]
@@ -163,6 +160,9 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 		return nil, ERROR_CRC_DOES_NOT_MATCH
 	}
 
+	if hasTimestampExpired {
+		return keyValueEntryFromOffset, ERROR_KEY_NOT_FOUND
+	}
 	return keyValueEntryFromOffset, nil
 }
 
