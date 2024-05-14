@@ -219,7 +219,7 @@ func Test_Merge(t *testing.T) {
 	filesBeforeMerge, err := filepath.Glob(filepath.Join(opts.Path, "*"))
 	assert.Nil(t, err)
 
-	err = d.Merge()
+	err = d.RunCompaction()
 	assert.Nil(t, err)
 
 	filesAfterMerge, err := filepath.Glob(filepath.Join(opts.Path, "*"))

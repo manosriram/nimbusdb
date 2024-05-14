@@ -84,7 +84,7 @@ func main() {
 			}
 			fmt.Println(string(z))
 		case "merge":
-			d.Merge()
+			d.RunCompaction()
 		case "keyreader":
 			prefix := ""
 			d.KeyReader(prefix, func(k []byte) {

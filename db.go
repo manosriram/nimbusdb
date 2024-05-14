@@ -761,7 +761,7 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 
 // Syncs the database. Will remove all expired/deleted keys from disk.
 // Since items are removed, disk usage will reduce.
-func (db *Db) Merge() error {
+func (db *Db) merge() error {
 	defer db.closeActiveMergeDataFilePointer()
 	err := filepath.WalkDir(db.dirPath, db.walk)
 	if err != nil {
@@ -782,5 +782,15 @@ func (db *Db) Merge() error {
 		}
 	}
 
+	return nil
+}
+
+func (db *Db) RunCompaction() error {
+	// TODO:
+	// 1. Compaction
+	// 2. HintFiles
+	if err := db.merge(); err != nil {
+		return err
+	}
 	return nil
 }
