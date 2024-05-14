@@ -2,6 +2,7 @@ package nimbusdb
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -301,9 +302,9 @@ func (db *Db) getActiveKeyValueEntriesInFile(filePath string) ([]*ActiveKeyValue
 	var offset int64 = 0
 	for offset < int64(len(data)) {
 		keyValueEntry, err := getKeyValueEntryFromOffsetViaData(offset, data)
-		if err != nil && err != ERROR_KEY_NOT_FOUND {
+		if err != nil && !errors.Is(err, ERROR_KEY_NOT_FOUND) {
 			return nil, nil, err
-		} else if err != nil && err == ERROR_KEY_NOT_FOUND {
+		} else if err != nil && errors.Is(err, ERROR_KEY_NOT_FOUND) {
 			previousOffset = offset
 			if int(offset+StaticChunkSize) > len(data) {
 				offset += keyValueEntry.size
