@@ -103,10 +103,14 @@ if err != nil {
 }
 ```
 
-#### Merge
+#### Compaction
+
+**TODO**
+- [x] Merge
+- [ ] Hintfiles
 
 ```go
-err := d.Merge()
+err := d.RunCompaction() // runs Merge
 if err != nil {
   // handle error
 }
