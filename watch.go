@@ -34,7 +34,9 @@ func (db *Db) CloseWatch() error {
 	if db.closed {
 		return ERROR_DB_CLOSED
 	}
-	close(db.watcher)
+	if db.watcher != nil {
+		close(db.watcher)
+	}
 	return nil
 }
 

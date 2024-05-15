@@ -63,6 +63,10 @@ var (
 	ERROR_KEY_VALUE_SIZE_EXCEEDED     = errors.New(fmt.Sprintf("exceeded limit of %d bytes", BlockSize))
 	ERROR_CRC_DOES_NOT_MATCH          = errors.New("crc does not match. corrupted datafile")
 	ERROR_DB_CLOSED                   = errors.New("database is closed")
+	ERROR_DATA_FILE_READER_NOT_CLOSED = errors.New("data file reader is not closed")
+	ERROR_DATA_FILE_WRITER_NOT_CLOSED = errors.New("data file writer is not closed")
+	ERROR_DATA_FILE_READER_NOT_OPEN   = errors.New("data file reader is not open")
+	ERROR_DATA_FILE_WRITER_NOT_OPEN   = errors.New("data file writer is not open")
 )
 
 var (
@@ -88,9 +92,6 @@ const (
 )
 
 type Options struct {
-	IsMerge              bool
-	CurrentMergeFilePath string
-
 	Path           string
 	ShouldWatch    bool
 	WatchQueueSize int
@@ -124,7 +125,7 @@ type Segment struct {
 	currentBlockOffset int64
 	path               string
 	blocks             map[int64]*BlockOffsetPair
-	fp                 *os.File
+	writer             *os.File
 }
 
 type Batch struct {

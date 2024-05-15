@@ -20,11 +20,11 @@ type KeyValueEntry struct {
 	offset      int64
 	size        int64 // Equals StaticChunkSize + keysize + valuesize
 	tstamp      int64
-	ksz         int64
-	vsz         int64
-	k           []byte
-	v           []byte
-	fileID      string
+	keySize     int64
+	valueSize   int64
+	key         []byte
+	value       []byte
+	fileId      string
 }
 
 // Block represents a single block of disk memory. Default size is 32KB.
@@ -36,15 +36,15 @@ type Block struct {
 }
 
 func (kv *KeyValueEntry) StaticChunkSize() int64 {
-	return StaticChunkSize + kv.ksz + kv.vsz
+	return StaticChunkSize + kv.keySize + kv.valueSize
 }
 
 func (kv *KeyValueEntry) Key() []byte {
-	return kv.k
+	return kv.key
 }
 
 func (kv *KeyValueEntry) Value() []byte {
-	return kv.v
+	return kv.value
 }
 
 func (kv *KeyValueEntry) PayloadToByte() []byte {
@@ -52,12 +52,12 @@ func (kv *KeyValueEntry) PayloadToByte() []byte {
 
 	buf := make([]byte, 0)
 	buf = append(buf, utils.Int64ToByte(kv.tstamp)...)
-	buf = append(buf, utils.Int64ToByte(kv.ksz)...)
-	buf = append(buf, utils.Int64ToByte(kv.vsz)...)
+	buf = append(buf, utils.Int64ToByte(kv.keySize)...)
+	buf = append(buf, utils.Int64ToByte(kv.valueSize)...)
 
 	keyValueEntryInBytes = append(keyValueEntryInBytes, buf...)
-	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.k...)
-	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.v...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.key...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.value...)
 
 	return keyValueEntryInBytes
 }
@@ -69,12 +69,12 @@ func (kv *KeyValueEntry) ToByte() []byte {
 	buf = append(buf, utils.UInt32ToByte(kv.crc)...)
 	buf = append(buf, kv.deleted)
 	buf = append(buf, utils.Int64ToByte(kv.tstamp)...)
-	buf = append(buf, utils.Int64ToByte(kv.ksz)...)
-	buf = append(buf, utils.Int64ToByte(kv.vsz)...)
+	buf = append(buf, utils.Int64ToByte(kv.keySize)...)
+	buf = append(buf, utils.Int64ToByte(kv.valueSize)...)
 
 	keyValueEntryInBytes = append(keyValueEntryInBytes, buf...)
-	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.k...)
-	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.v...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.key...)
+	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.value...)
 
 	return keyValueEntryInBytes
 }
@@ -98,11 +98,11 @@ func (kv *KeyValueEntry) calculateCRC() uint32 {
 }
 
 func (db *Db) writeKeyValueEntry(keyValueEntry *KeyValueEntry) error {
-	f, err := db.getActiveDataFilePointer()
+	writer, err := db.getActiveDataFileWriter()
 	if err != nil {
 		return err
 	}
-	_, err = f.Write(keyValueEntry.ToByte())
+	_, err = writer.Write(keyValueEntry.ToByte())
 	return err
 }
 
@@ -146,13 +146,13 @@ func getKeyValueEntryFromOffsetViaData(offset int64, data []byte) (*KeyValueEntr
 	v := data[offset+ValueSizeOffset+intKsz : offset+ValueSizeOffset+intKsz+intVsz]
 
 	keyValueEntryFromOffset := &KeyValueEntry{
-		deleted: deleted,
-		offset:  offset,
-		ksz:     int64(len(k)),
-		vsz:     int64(len(utils.Encode(v))),
-		size:    int64(StaticChunkSize + intKsz + intVsz),
-		k:       k,
-		v:       utils.Encode(v),
+		deleted:   deleted,
+		offset:    offset,
+		keySize:   int64(len(k)),
+		valueSize: int64(len(utils.Encode(v))),
+		size:      int64(StaticChunkSize + intKsz + intVsz),
+		key:       k,
+		value:     utils.Encode(v),
 	}
 	keyValueEntryFromOffset.setTTLViaTimestamp(tstamp64Bit)
 

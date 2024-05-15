@@ -30,7 +30,7 @@ func (db *Db) KeyValueReader(keyPrefix string, handler func(k []byte, v []byte))
 			if err != nil {
 				return false
 			}
-			handler(it.(*item).key, v.v)
+			handler(it.(*item).key, v.value)
 		}
 		return true
 	})

@@ -34,8 +34,8 @@ func (seg *Segment) getBlockNumber() int64 {
 	return seg.currentBlockNumber
 }
 
-func (seg *Segment) getFp() *os.File {
-	return seg.fp
+func (seg *Segment) getWriter() *os.File {
+	return seg.writer
 }
 
 func (seg *Segment) getPath() string {
@@ -46,13 +46,13 @@ func (seg *Segment) setPath(path string) {
 	seg.path = path
 }
 
-func (seg *Segment) setFp(fp *os.File) {
-	seg.fp = fp
+func (seg *Segment) setWriter(fp *os.File) {
+	seg.writer = fp
 }
 
-func (seg *Segment) closeFp() error {
+func (seg *Segment) closeWriter() error {
 	if !seg.closed {
-		err := seg.fp.Close()
+		err := seg.writer.Close()
 		if err != nil {
 			return err
 		}
