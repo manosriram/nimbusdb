@@ -19,22 +19,33 @@ var (
 	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 )
 
-func GetTestKey(i int) []byte {
-	return []byte(fmt.Sprintf("nimbusdb_test_key_%09d", i))
+var stringBuilderPool = sync.Pool{
+	New: func() interface{} {
+		return &strings.Builder{}
+	},
 }
 
-func RandomValue(n int) []byte {
-	b := make([]byte, n)
-	for i := range b {
-		lock.Lock()
-		b[i] = letters[randStr.Intn(len(letters))]
-		lock.Unlock()
-	}
-	return []byte("nimbusdb_test_value_" + string(b))
+func GetTestKey(i int) []byte {
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	defer stringBuilderPool.Put(sb)
+	defer sb.Reset()
+	sb.WriteString("nimbusdb_test_key_")
+	numStr := strconv.Itoa(i)
+	sb.WriteString(numStr)
+	finalKey := sb.String()
+
+	return []byte(finalKey)
 }
 
 func GetSwapFilePath(dbDirPath string, idFilePath string) string {
-	return fmt.Sprintf("%s/%s.swp", dbDirPath, strings.Split(idFilePath, ".")[0])
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	defer stringBuilderPool.Put(sb)
+	defer sb.Reset()
+	sb.WriteString(dbDirPath)
+	sb.WriteString(strings.Split(idFilePath, ".")[0])
+	swapFilePath := sb.String()
+
+	return swapFilePath
 }
 
 func TimeUntilUnixNano(tstamp int64) time.Duration {
@@ -102,7 +113,12 @@ func ByteToInt64(b []byte) int64 {
 func Encode(d interface{}) []byte {
 	switch d.(type) {
 	case string:
-		return []byte(fmt.Sprintf("%s", d))
+		sb := stringBuilderPool.Get().(*strings.Builder)
+		defer stringBuilderPool.Put(sb)
+		defer sb.Reset()
+		sb.WriteString(d.(string))
+		ss := sb.String()
+		return []byte(ss)
 	case int64:
 		return Int64ToByte(d.(int64))
 	case int32:

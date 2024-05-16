@@ -1,0 +1,783 @@
+# github.com/manosriram/nimbusdb
+./db.go:54:7: can inline init.func1
+./wal.go:52:7: can inline init.func2
+./types.go:58:48: inlining call to errors.New
+./types.go:59:48: inlining call to errors.New
+./types.go:60:48: inlining call to errors.New
+./types.go:61:48: inlining call to errors.New
+./types.go:62:48: inlining call to errors.New
+./types.go:63:48: inlining call to errors.New
+./types.go:64:48: inlining call to errors.New
+./types.go:65:48: inlining call to errors.New
+./types.go:66:48: inlining call to errors.New
+./types.go:67:48: inlining call to errors.New
+./types.go:68:48: inlining call to errors.New
+./types.go:69:48: inlining call to errors.New
+./types.go:73:46: inlining call to errors.New
+./types.go:74:46: inlining call to errors.New
+./batch.go:17:18: inlining call to sync.(*Mutex).Lock
+./btree.go:26:17: inlining call to btree.(*BTree).Get
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:108:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:136:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).MoveToFront
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:141:8: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:151:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Get.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:150:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:158:26: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).MoveToFront
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:158:26: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:151:19: inlining call to sync.(*Mutex).Unlock
+./db.go:87:6: can inline (*Db).getBlockFromCache
+./segment.go:24:6: can inline (*Db).getSegment
+./segment.go:8:6: can inline (*Db).getSegmentBlock
+./db.go:292:23: inlining call to filepath.Join
+./wal.go:93:6: can inline (*KeyValueEntry).setTTLViaTimestamp
+./wal.go:39:6: can inline (*KeyValueEntry).StaticChunkSize
+./wal.go:58:60: inlining call to (*KeyValueEntry).StaticChunkSize
+./wal.go:62:37: inlining call to utils.Int64ToByte
+./wal.go:63:37: inlining call to utils.Int64ToByte
+./wal.go:64:37: inlining call to utils.Int64ToByte
+./wal.go:62:37: inlining call to binary.littleEndian.PutUint64
+./wal.go:63:37: inlining call to binary.littleEndian.PutUint64
+./wal.go:64:37: inlining call to binary.littleEndian.PutUint64
+./wal.go:107:24: inlining call to crc32.Checksum
+./wal.go:107:24: inlining call to crc32.Update
+./wal.go:130:30: inlining call to utils.ByteToUInt32
+./wal.go:135:34: inlining call to utils.ByteToInt64
+./wal.go:141:29: inlining call to utils.ByteToInt64
+./wal.go:145:29: inlining call to utils.ByteToInt64
+./wal.go:168:44: inlining call to (*KeyValueEntry).setTTLViaTimestamp
+./wal.go:130:30: inlining call to binary.littleEndian.Uint32
+./wal.go:135:34: inlining call to binary.littleEndian.Uint64
+./wal.go:141:29: inlining call to binary.littleEndian.Uint64
+./wal.go:145:29: inlining call to binary.littleEndian.Uint64
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:336:6: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).removeFromBucket
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:50:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:73:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).lazyInit
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:75:9: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:80:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:91:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).insertValue
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:92:17: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:129:12: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).lazyInit
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:130:22: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insertValue
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:129:12: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:130:22: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:62:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).Length
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:65:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:96:6: can inline internal.(*LruList[go.shape.int64,go.shape.*uint8]).Remove
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:298:20: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Remove
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:300:20: inlining call to expirable.(*LRU[go.shape.int64,go.shape.*uint8]).removeFromBucket
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:291:28: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:122:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Add.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:121:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:127:26: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).MoveToFront
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:128:21: inlining call to expirable.(*LRU[go.shape.int64,go.shape.*uint8]).removeFromBucket
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:140:43: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Length
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:127:26: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:122:19: inlining call to sync.(*Mutex).Unlock
+./db.go:92:6: can inline (*Db).setBlockCache
+./db.go:239:41: inlining call to (*Db).getBlockFromCache
+./db.go:244:20: inlining call to bytes.Compare
+./db.go:250:30: inlining call to (*Db).getSegment
+./db.go:255:33: inlining call to (*Db).getSegmentBlock
+./db.go:283:19: inlining call to (*Db).setBlockCache
+./db.go:624:2: can inline (*Db).Get.deferwrap1
+./db.go:104:6: can inline (*Db).getLastOffset
+./db.go:105:27: inlining call to atomic.(*Int64).Load
+./wal.go:98:51: inlining call to time.Time.UnixNano
+./wal.go:98:51: inlining call to time.(*Time).unixSec
+./wal.go:98:51: inlining call to time.(*Time).nsec
+./wal.go:98:51: inlining call to time.(*Time).sec
+./db.go:124:6: can inline (*Db).getActiveDataFileReader
+./segment.go:77:23: inlining call to filepath.Join
+./segment.go:20:6: can inline (*Db).setSegment
+./segment.go:45:6: can inline (*Segment).setPath
+./segment.go:49:6: can inline (*Segment).setWriter
+./db.go:159:6: can inline (*Db).closeActiveDataFileWriter
+./db.go:161:25: inlining call to os.(*File).Close
+./db.go:118:31: inlining call to (*Db).closeActiveDataFileWriter
+./db.go:118:31: inlining call to os.(*File).Close
+./db.go:152:6: can inline (*Db).closeActiveDataFileReader
+./db.go:154:25: inlining call to os.(*File).Close
+./db.go:110:31: inlining call to (*Db).closeActiveDataFileReader
+./db.go:110:31: inlining call to os.(*File).Close
+./db.go:167:37: inlining call to (*Db).closeActiveDataFileWriter
+./db.go:167:37: inlining call to os.(*File).Close
+./db.go:100:6: can inline (*Db).setLastOffset
+./db.go:101:21: inlining call to atomic.(*Int64).Store
+./db.go:455:4: can inline (*Db).createActiveDatafile.deferwrap1
+./db.go:452:24: inlining call to path.Ext
+./db.go:456:22: inlining call to strings.(*Builder).Reset
+./db.go:457:43: inlining call to strings.Split
+./db.go:457:22: inlining call to strings.(*Builder).Write
+./db.go:458:22: inlining call to strings.(*Builder).Write
+./db.go:462:28: inlining call to filepath.Join
+./db.go:463:57: inlining call to strings.(*Builder).String
+./db.go:463:28: inlining call to filepath.Join
+./db.go:464:13: inlining call to os.Rename
+./db.go:466:67: inlining call to strings.(*Builder).String
+./db.go:470:32: inlining call to (*Db).getSegment
+./db.go:474:37: inlining call to strings.(*Builder).String
+./db.go:474:17: inlining call to (*Db).setSegment
+./db.go:475:39: inlining call to strings.(*Builder).String
+./db.go:475:19: inlining call to (*Segment).setPath
+./db.go:476:21: inlining call to (*Segment).setWriter
+./db.go:481:32: inlining call to os.(*File).Name
+./db.go:482:18: inlining call to (*Db).setLastOffset
+./db.go:457:22: inlining call to strings.(*Builder).copyCheck
+./db.go:458:22: inlining call to strings.(*Builder).copyCheck
+./db.go:482:18: inlining call to atomic.(*Int64).Store
+./db.go:457:22: inlining call to strings.noescape
+./db.go:458:22: inlining call to strings.noescape
+./db.go:589:43: inlining call to (*Db).getActiveDataFileReader
+./wal.go:101:6: can inline (*KeyValueEntry).setCRC
+./db.go:131:6: can inline (*Db).getActiveDataFileWriter
+./wal.go:75:60: inlining call to (*KeyValueEntry).StaticChunkSize
+./wal.go:79:38: inlining call to utils.UInt32ToByte
+./wal.go:81:37: inlining call to utils.Int64ToByte
+./wal.go:82:37: inlining call to utils.Int64ToByte
+./wal.go:83:37: inlining call to utils.Int64ToByte
+./wal.go:79:38: inlining call to binary.littleEndian.PutUint32
+./wal.go:81:37: inlining call to binary.littleEndian.PutUint64
+./wal.go:82:37: inlining call to binary.littleEndian.PutUint64
+./wal.go:83:37: inlining call to binary.littleEndian.PutUint64
+./wal.go:112:43: inlining call to (*Db).getActiveDataFileWriter
+./db.go:25:6: can inline NewKeyDirValue
+./segment.go:72:6: can inline (*Segment).setBlock
+./segment.go:68:6: can inline (*Segment).setBlockOffset
+./segment.go:29:6: can inline (*Segment).getBlockOffset
+./segment.go:86:40: inlining call to (*Db).getSegmentBlock
+./segment.go:91:18: inlining call to (*Segment).setBlock
+./segment.go:94:48: inlining call to (*Segment).getBlockOffset
+./segment.go:94:25: inlining call to (*Segment).setBlockOffset
+./segment.go:103:25: inlining call to (*Segment).setBlockOffset
+./segment.go:105:15: inlining call to (*Db).setSegment
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:193:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Remove.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:192:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:193:19: inlining call to sync.(*Mutex).Unlock
+./db.go:96:6: can inline (*Db).removeBlockCache
+./segment.go:33:6: can inline (*Segment).getBlockNumber
+./btree.go:34:29: inlining call to btree.(*BTree).ReplaceOrInsert
+./db.go:197:30: inlining call to (*Db).getSegment
+./db.go:218:16: inlining call to (*Db).setSegment
+./db.go:224:45: inlining call to (*Segment).getBlockNumber
+./db.go:224:22: inlining call to (*Db).removeBlockCache
+./db.go:227:21: inlining call to atomic.(*Int64).Store
+./watch.go:85:6: can inline (*Db).SendWatchEvent
+./db.go:661:2: can inline (*Db).Set.deferwrap1
+./db.go:651:30: inlining call to (*Db).getLastOffset
+./db.go:663:25: inlining call to (*KeyValueEntry).setCRC
+./db.go:669:134: inlining call to utils.GetFilenameWithoutExtension
+./db.go:669:27: inlining call to NewKeyDirValue
+./db.go:679:21: inlining call to (*Db).SendWatchEvent
+./db.go:681:21: inlining call to (*Db).SendWatchEvent
+./db.go:651:30: inlining call to atomic.(*Int64).Load
+./db.go:713:2: can inline (*Db).SetWithTTL.deferwrap1
+./db.go:703:30: inlining call to (*Db).getLastOffset
+./db.go:715:25: inlining call to (*KeyValueEntry).setCRC
+./db.go:721:134: inlining call to utils.GetFilenameWithoutExtension
+./db.go:721:27: inlining call to NewKeyDirValue
+./db.go:730:21: inlining call to (*Db).SendWatchEvent
+./db.go:732:21: inlining call to (*Db).SendWatchEvent
+./db.go:703:30: inlining call to atomic.(*Int64).Load
+./batch.go:174:2: can inline (*Batch).Commit.deferwrap1
+./batch.go:201:24: inlining call to (*Db).SendWatchEvent
+./batch.go:203:24: inlining call to (*Db).SendWatchEvent
+./batch.go:35:20: inlining call to sync.(*Mutex).Unlock
+./batch.go:41:2: can inline (*Batch).Get.deferwrap1
+./batch.go:40:12: inlining call to sync.(*RWMutex).RLock
+./batch.go:49:17: inlining call to bytes.Equal
+./batch.go:40:12: inlining call to atomic.(*Int32).Add
+./batch.go:41:20: inlining call to sync.(*RWMutex).RUnlock
+./batch.go:41:20: inlining call to atomic.(*Int32).Add
+./batch.go:69:2: can inline (*Batch).Exists.deferwrap1
+./batch.go:68:12: inlining call to sync.(*RWMutex).RLock
+./batch.go:75:17: inlining call to bytes.Equal
+./batch.go:89:20: inlining call to bytes.Equal
+./batch.go:68:12: inlining call to atomic.(*Int32).Add
+./batch.go:69:20: inlining call to sync.(*RWMutex).RUnlock
+./batch.go:69:20: inlining call to atomic.(*Int32).Add
+./batch.go:94:2: can inline (*Batch).Set.deferwrap1
+./batch.go:100:17: inlining call to bytes.Equal
+./batch.go:119:2: can inline (*Batch).SetWithTTL.deferwrap1
+./batch.go:125:17: inlining call to bytes.Equal
+./segment.go:37:6: can inline (*Segment).getWriter
+./db.go:608:30: inlining call to (*Db).getSegment
+./db.go:612:29: inlining call to (*Segment).getWriter
+./db.go:614:21: inlining call to (*Db).removeBlockCache
+./db.go:742:2: can inline (*Db).Delete.deferwrap1
+./db.go:746:20: inlining call to (*Db).SendWatchEvent
+./batch.go:145:2: can inline (*Batch).Delete.deferwrap1
+./batch.go:152:17: inlining call to bytes.Equal
+./batch.go:213:2: can inline (*Batch).Rollback.deferwrap1
+./btree.go:21:6: can inline item.Less
+./btree.go:22:22: inlining call to bytes.Compare
+./btree.go:56:15: inlining call to btree.(*BTree).Ascend
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:58:6: can inline internal.NewList[go.shape.int64,go.shape.*uint8]
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:58:84: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:309:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:314:14: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:316:12: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:322:13: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:84:4: can inline expirable.NewLRU[go.shape.int64,go.shape.*uint8].func1.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:82:3: can inline expirable.NewLRU[go.shape.int64,go.shape.*uint8].gowrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:65:36: inlining call to internal.NewList[go.shape.int64,go.shape.*uint8]
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:65:36: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:84:21: inlining call to time.(*Ticker).Stop
+./db.go:74:39: can inline NewDb.func1
+./db.go:65:19: inlining call to btree.New
+./db.go:79:3: inlining call to NewDb.func1
+./db.go:65:19: inlining call to btree.NewG[go.shape.interface { Less(github.com/google/btree.Item) bool }]
+./db.go:65:19: inlining call to btree.NewFreeListG[go.shape.interface { Less(github.com/google/btree.Item) bool }]
+./db.go:65:19: inlining call to btree.NewWithFreeListG[go.shape.interface { Less(github.com/google/btree.Item) bool }]
+./db.go:138:6: can inline (*Db).getActiveMergeFileWriter
+./db.go:145:6: can inline (*Db).closeActiveMergeDataFilePointer
+./db.go:147:30: inlining call to os.(*File).Close
+./db.go:303:29: inlining call to utils.ReadFile
+./db.go:318:60: inlining call to utils.GetFilenameWithoutExtension
+./db.go:321:27: inlining call to strings.Split
+./db.go:348:29: inlining call to utils.ReadFile
+./db.go:370:59: inlining call to utils.GetFilenameWithoutExtension
+./db.go:391:29: inlining call to utils.ReadFile
+./db.go:404:60: inlining call to utils.GetFilenameWithoutExtension
+./db.go:407:50: inlining call to utils.GetFilenameWithoutExtension
+./db.go:433:32: inlining call to os.(*File).Name
+./db.go:434:18: inlining call to (*Db).setLastOffset
+./db.go:434:18: inlining call to atomic.(*Int64).Store
+./segment.go:55:26: inlining call to os.(*File).Close
+./db.go:562:37: inlining call to (*Db).closeActiveDataFileReader
+./db.go:567:36: inlining call to (*Db).closeActiveDataFileWriter
+./db.go:562:37: inlining call to os.(*File).Close
+./db.go:567:36: inlining call to os.(*File).Close
+./db.go:499:14: inlining call to log.Printf
+./db.go:518:2: can inline Open.gowrap1
+./db.go:515:28: inlining call to utils.JoinPaths
+./db.go:515:28: inlining call to filepath.Join
+./db.go:543:30: inlining call to utils.JoinPaths
+./db.go:544:14: inlining call to path.Ext
+./db.go:547:21: inlining call to path.Ext
+./db.go:550:21: inlining call to path.Ext
+./db.go:543:30: inlining call to filepath.Join
+./db.go:582:6: can inline (*Db).All
+./db.go:756:14: inlining call to fmt.Println
+./db.go:759:40: inlining call to os.(*File).Name
+./db.go:806:4: can inline (*Db).walk.deferwrap1
+./db.go:767:49: inlining call to (*Db).getActiveMergeFileWriter
+./db.go:772:13: inlining call to path.Ext
+./db.go:776:28: inlining call to utils.JoinPaths
+./db.go:777:66: inlining call to os.(*File).Name
+./db.go:803:38: inlining call to (*Db).closeActiveMergeDataFilePointer
+./db.go:804:33: inlining call to strings.Split
+./db.go:807:18: inlining call to strings.(*Builder).WriteString
+./db.go:808:18: inlining call to strings.(*Builder).WriteString
+./db.go:810:38: inlining call to strings.(*Builder).String
+./db.go:810:19: inlining call to os.Rename
+./db.go:776:28: inlining call to filepath.Join
+./db.go:803:38: inlining call to os.(*File).Close
+./db.go:807:18: inlining call to strings.(*Builder).copyCheck
+./db.go:808:18: inlining call to strings.(*Builder).copyCheck
+./db.go:807:18: inlining call to strings.noescape
+./db.go:808:18: inlining call to strings.noescape
+./db.go:824:2: can inline (*Db).merge.deferwrap1
+./db.go:832:43: inlining call to filepath.Join
+./db.go:832:29: inlining call to filepath.Glob
+./db.go:837:22: inlining call to strings.Split
+./db.go:839:19: inlining call to os.Rename
+./db.go:824:42: inlining call to (*Db).closeActiveMergeDataFilePointer
+./db.go:824:42: inlining call to os.(*File).Close
+./db.go:848:6: can inline (*Db).RunCompaction
+./reader.go:13:23: inlining call to btree.(*BTree).Ascend
+./reader.go:15:23: inlining call to strings.HasPrefix
+./reader.go:26:23: inlining call to btree.(*BTree).Ascend
+./reader.go:28:23: inlining call to strings.HasPrefix
+./segment.go:41:6: can inline (*Segment).getPath
+./segment.go:64:6: can inline (*Segment).setBlockNumber
+./segment.go:109:6: can inline createNewSegment
+./wal.go:43:6: can inline (*KeyValueEntry).Key
+./wal.go:47:6: can inline (*KeyValueEntry).Value
+./watch.go:26:6: can inline (*Db).NewWatch
+./watch.go:33:6: can inline (*Db).CloseWatch
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:115:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:120:13: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:668:19: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:669:22: inlining call to btree.(*items[go.shape.*uint8]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:101:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:104:14: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:110:13: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:239:20: inlining call to btree.(*copyOnWriteContext[go.shape.interface { Less(github.com/google/btree.Item) bool }]).newNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:440:26: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:441:30: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:442:36: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:443:23: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:446:53: inlining call to btree.(*items[go.shape.*uint8]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:446:27: inlining call to btree.(*items[go.shape.*uint8]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:450:26: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:451:30: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:452:41: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:456:71: inlining call to btree.(*items[go.shape.*uint8]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:462:26: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:464:32: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:465:36: inlining call to btree.(*items[go.shape.*uint8]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:375:22: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:380:27: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:387:28: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:398:25: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:267:23: inlining call to btree.(*copyOnWriteContext[go.shape.interface { Less(github.com/google/btree.Item) bool }]).newNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:269:18: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:272:22: inlining call to btree.(*items[go.shape.*uint8]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:283:25: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:285:18: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:286:21: inlining call to btree.(*items[go.shape.*uint8]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:301:19: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:317:23: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:215:27: can inline btree.items[go.shape.*uint8].find.func1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:261:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Resize.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:260:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:266:28: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Length
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:261:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:254:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Len.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:253:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:255:27: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Length
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:254:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:35:6: can inline internal.(*Entry[go.shape.int64,go.shape.*uint8]).PrevEntry
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:237:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Values.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:236:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:241:29: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:241:64: inlining call to internal.(*Entry[go.shape.int64,go.shape.*uint8]).PrevEntry
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:237:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:225:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Keys.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:224:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:227:29: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:227:64: inlining call to internal.(*Entry[go.shape.int64,go.shape.*uint8]).PrevEntry
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:225:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:215:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).GetOldest.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:214:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:216:28: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:215:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:204:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).RemoveOldest.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:203:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:205:28: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:204:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:177:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Peek.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:176:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:177:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:168:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Contains.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:167:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:168:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:102:2: can inline expirable.(*LRU[go.shape.int64,go.shape.*uint8]).Purge.deferwrap1
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:101:11: inlining call to sync.(*Mutex).Lock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:114:18: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:102:19: inlining call to sync.(*Mutex).Unlock
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:123:12: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).lazyInit
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:124:22: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insertValue
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:123:12: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:124:22: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:54:6: can inline expirable.NewLRU[int64,*github.com/manosriram/nimbusdb.Block]
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:336:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).removeFromBucket
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:336:6: inlining call to expirable.(*LRU[go.shape.int64,go.shape.*uint8]).removeFromBucket
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:326:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).addToBucket
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:308:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).deleteExpired
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:297:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).removeElement
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:290:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).removeOldest
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:259:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Resize
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:252:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Len
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:235:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Values
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:223:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Keys
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:213:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).GetOldest
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:202:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).RemoveOldest
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:191:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Remove
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:175:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Peek
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:166:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Contains
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:149:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Get
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:120:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Add
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:100:6: can inline expirable.(*LRU[int64,*github.com/manosriram/nimbusdb.Block]).Purge
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:136:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).MoveToFront
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:136:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).MoveToFront
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:136:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:128:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).PushFrontExpirable
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:122:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).PushFront
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:108:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:108:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).move
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:96:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).Remove
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:96:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Remove
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:91:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).insertValue
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:91:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insertValue
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:91:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:80:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:80:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).insert
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:73:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).lazyInit
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:73:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).lazyInit
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:73:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:65:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:65:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Back
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:62:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).Length
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:62:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Length
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:50:6: can inline internal.(*LruList[int64,*github.com/manosriram/nimbusdb.Block]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:50:6: inlining call to internal.(*LruList[go.shape.int64,go.shape.*uint8]).Init
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:35:6: can inline internal.(*Entry[int64,*github.com/manosriram/nimbusdb.Block]).PrevEntry
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:35:6: inlining call to internal.(*Entry[go.shape.int64,go.shape.*uint8]).PrevEntry
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:878:6: can inline btree.(*node[github.com/google/btree.Item]).reset
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:569:6: can inline btree.(*node[github.com/google/btree.Item]).print
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:500:6: can inline btree.(*node[github.com/google/btree.Item]).iterate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:437:6: can inline btree.(*node[github.com/google/btree.Item]).growChildAndRemove
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:369:6: can inline btree.(*node[github.com/google/btree.Item]).remove
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:321:6: can inline btree.(*node[github.com/google/btree.Item]).get
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:293:6: can inline btree.(*node[github.com/google/btree.Item]).insert
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:279:6: can inline btree.(*node[github.com/google/btree.Item]).maybeSplitChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:265:6: can inline btree.(*node[github.com/google/btree.Item]).split
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:256:6: inlining call to btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableChild
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:235:6: can inline btree.(*node[github.com/google/btree.Item]).mutableFor
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:665:6: can inline btree.(*copyOnWriteContext[github.com/google/btree.Item]).freeNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:648:6: can inline btree.(*copyOnWriteContext[github.com/google/btree.Item]).newNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:648:6: inlining call to btree.(*copyOnWriteContext[go.shape.interface { Less(github.com/google/btree.Item) bool }]).newNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:114:6: can inline btree.(*FreeListG[github.com/google/btree.Item]).freeNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:100:6: can inline btree.(*FreeListG[github.com/google/btree.Item]).newNode
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:214:6: can inline btree.items[*github.com/google/btree.node[github.com/google/btree.Item]].find
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:202:6: can inline btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:202:6: inlining call to btree.(*items[go.shape.*uint8]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:191:6: can inline btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:191:6: inlining call to btree.(*items[go.shape.*uint8]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:181:6: can inline btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:181:6: inlining call to btree.(*items[go.shape.*uint8]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:170:6: can inline btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:170:6: inlining call to btree.(*items[go.shape.*uint8]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:214:6: can inline btree.items[github.com/google/btree.Item].find
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:202:6: can inline btree.(*items[github.com/google/btree.Item]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:202:6: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).truncate
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:191:6: can inline btree.(*items[github.com/google/btree.Item]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:191:6: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).pop
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:181:6: can inline btree.(*items[github.com/google/btree.Item]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:181:6: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).removeAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:170:6: can inline btree.(*items[github.com/google/btree.Item]).insertAt
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:170:6: inlining call to btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).insertAt
+<autogenerated>:1: inlining call to btree.items[github.com/google/btree.Item].find
+<autogenerated>:1: inlining call to btree.items[*github.com/google/btree.node[github.com/google/btree.Item]].find
+<autogenerated>:1: inlining call to item.Less
+<autogenerated>:1: inlining call to bytes.Compare
+./types.go:63:60: ... argument does not escape
+./types.go:63:91: int64(32768) escapes to heap
+./types.go:63:48: &errors.errorString{...} escapes to heap
+./db.go:55:10: &strings.Builder{} escapes to heap
+./wal.go:53:14: make([]byte, 0, 0) escapes to heap
+./wal.go:53:14: make([]byte, 0, 0) escapes to heap
+./batch.go:11:7: leaking param: db
+./batch.go:12:7: &Batch{...} escapes to heap
+./btree.go:25:7: leaking param content: b
+./btree.go:25:21: leaking param: key
+./btree.go:26:18: &item{...} escapes to heap
+./db.go:290:7: leaking param content: db
+./db.go:290:53: leaking param: keyDirPath
+./db.go:292:23: ... argument does not escape
+./wal.go:57:7: kv does not escape
+./wal.go:58:30: make([]byte, 0, ~r0) escapes to heap
+./wal.go:62:37: make([]byte, 10) does not escape
+./wal.go:63:37: make([]byte, 10) does not escape
+./wal.go:64:37: make([]byte, 10) does not escape
+./wal.go:70:15: buf escapes to heap
+./wal.go:105:7: kv does not escape
+./wal.go:122:54: leaking param: data
+./wal.go:159:29: &KeyValueEntry{...} escapes to heap
+./wal.go:163:37: v does not escape
+./wal.go:166:27: v does not escape
+./wal.go:182:27: leaking param: data
+./wal.go:182:40: block does not escape
+./wal.go:182:64: leaking param content: cacheBlock
+./btree.go:42:7: leaking param content: b
+./btree.go:42:24: leaking param: key
+./btree.go:43:21: &item{...} escapes to heap
+./btree.go:46:10: &KeyValuePair{...} escapes to heap
+./btree.go:48:12: x.v escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:130:22: &internal.Entry[go.shape.int64,go.shape.*uint8]{...} escapes to heap
+./db.go:231:7: leaking param content: db
+./db.go:231:25: leaking param: key
+./db.go:232:22: new(Block) escapes to heap
+./db.go:274:51: ... argument does not escape
+./db.go:274:53: v.tstamp escapes to heap
+./db.go:622:7: leaking param: db
+./db.go:622:19: leaking param: key
+./wal.go:97:7: kv does not escape
+./segment.go:76:7: leaking param content: db
+./segment.go:76:45: leaking param: keyDirPath
+./segment.go:77:23: ... argument does not escape
+./db.go:116:7: leaking param content: db
+./db.go:116:39: leaking param: writer
+./db.go:108:7: leaking param content: db
+./db.go:108:39: leaking param: reader
+./db.go:166:7: leaking param content: db
+./db.go:166:33: leaking param: activeDataFile
+./db.go:441:7: leaking param: db
+./db.go:441:36: leaking param: dirPath
+./db.go:457:61: ([]byte)((~r0)[0]) does not escape
+./db.go:457:61: zero-copy string->[]byte conversion
+./db.go:457:22: "strings: illegal use of non-zero Builder copied by value" escapes to heap
+./db.go:458:30: ([]byte)(".idfile") does not escape
+./db.go:458:30: zero-copy string->[]byte conversion
+./db.go:458:22: "strings: illegal use of non-zero Builder copied by value" escapes to heap
+./db.go:462:28: ... argument does not escape
+./db.go:463:28: ... argument does not escape
+./db.go:586:7: leaking param: db
+./db.go:586:40: newKeyValueEntry does not escape
+./db.go:592:12: ... argument does not escape
+./wal.go:74:7: kv does not escape
+./wal.go:75:30: make([]byte, 0, ~r0) escapes to heap
+./wal.go:79:38: make([]byte, 5) does not escape
+./wal.go:81:37: make([]byte, 10) does not escape
+./wal.go:82:37: make([]byte, 10) does not escape
+./wal.go:83:37: make([]byte, 10) does not escape
+./wal.go:89:15: buf escapes to heap
+./wal.go:111:7: leaking param content: db
+./wal.go:111:34: keyValueEntry does not escape
+./segment.go:85:7: db does not escape
+./segment.go:85:29: leaking param content: kdValue
+./segment.go:85:51: leaking param: segment
+./segment.go:97:48: &BlockOffsetPair{...} escapes to heap
+./btree.go:33:7: leaking param content: b
+./btree.go:33:21: leaking param: key
+./btree.go:33:33: leaking param: value
+./btree.go:34:30: &item{...} escapes to heap
+./db.go:188:7: leaking param: db
+./db.go:188:25: leaking param: key
+./db.go:188:37: leaking param: kdValue
+./db.go:199:17: &Segment{...} escapes to heap
+./db.go:200:38: map[int64]*BlockOffsetPair{...} escapes to heap
+./db.go:201:8: &BlockOffsetPair{...} escapes to heap
+./db.go:229:9: kdValue escapes to heap
+./watch.go:43:28: leaking param: key to result ~r0 level=0
+./watch.go:43:33: leaking param: oldValue to result ~r0 level=0
+./watch.go:43:43: leaking param: newValue to result ~r0 level=0
+./watch.go:43:60: leaking param: batchId to result ~r0 level=0
+./watch.go:57:28: leaking param: key to result ~r0 level=0
+./watch.go:57:33: leaking param: oldValue to result ~r0 level=0
+./watch.go:57:43: leaking param: newValue to result ~r0 level=0
+./watch.go:57:60: leaking param: batchId to result ~r0 level=0
+./db.go:635:7: leaking param: db
+./db.go:635:19: leaking param: k
+./db.go:635:29: leaking param: v
+./db.go:637:35: v does not escape
+./db.go:649:22: &KeyValueEntry{...} does not escape
+./db.go:653:37: v does not escape
+./db.go:656:27: v does not escape
+./db.go:669:27: &KeyDirValue{...} does not escape
+./db.go:687:7: leaking param: db
+./db.go:687:26: leaking param: k
+./db.go:687:36: leaking param: v
+./db.go:689:45: v does not escape
+./db.go:701:22: &KeyValueEntry{...} does not escape
+./db.go:705:37: v does not escape
+./db.go:708:27: v does not escape
+./db.go:721:27: &KeyDirValue{...} does not escape
+./batch.go:172:7: leaking param: b
+./batch.go:21:7: leaking param: b
+./batch.go:39:7: leaking param: b
+./batch.go:39:21: leaking param: k
+./batch.go:49:17: string(bytes.a) does not escape
+./batch.go:49:17: string(bytes.b) does not escape
+./batch.go:67:7: leaking param: b
+./batch.go:67:24: leaking param: k
+./batch.go:75:17: string(bytes.a) does not escape
+./batch.go:75:17: string(bytes.b) does not escape
+./batch.go:89:20: string(bytes.a) does not escape
+./batch.go:89:20: string(bytes.b) does not escape
+./batch.go:92:7: leaking param: b
+./batch.go:92:21: leaking param: k
+./batch.go:92:31: leaking param: v
+./batch.go:100:17: string(bytes.a) does not escape
+./batch.go:100:17: string(bytes.b) does not escape
+./batch.go:105:8: &KeyValuePair{...} escapes to heap
+./batch.go:107:10: v escapes to heap
+./batch.go:117:7: leaking param: b
+./batch.go:117:28: leaking param: k
+./batch.go:117:38: leaking param: v
+./batch.go:125:17: string(bytes.a) does not escape
+./batch.go:125:17: string(bytes.b) does not escape
+./batch.go:130:8: &KeyValuePair{...} escapes to heap
+./batch.go:132:10: v escapes to heap
+./db.go:602:7: leaking param content: db
+./db.go:602:25: leaking param: key
+./db.go:613:23: []byte{...} does not escape
+./watch.go:71:28: leaking param: key to result ~r0 level=0
+./watch.go:71:33: leaking param: oldValue to result ~r0 level=0
+./watch.go:71:43: leaking param: newValue to result ~r0 level=0
+./watch.go:71:60: leaking param: batchId to result ~r0 level=0
+./db.go:740:7: leaking param: db
+./db.go:740:22: leaking param: k
+./batch.go:159:23: (*Batch).Delete ignoring self-assignment in b.writeQueue[index] = b.writeQueue[len(b.writeQueue) - 1]
+./batch.go:161:16: (*Batch).Delete ignoring self-assignment in b.writeQueue = b.writeQueue[:len(b.writeQueue) - 1]
+./batch.go:143:7: leaking param: b
+./batch.go:143:24: leaking param: k
+./batch.go:152:17: string(bytes.a) does not escape
+./batch.go:152:17: string(bytes.b) does not escape
+./batch.go:211:7: leaking param: b
+./btree.go:21:7: it does not escape
+./btree.go:21:21: i does not escape
+./btree.go:54:7: leaking param content: b
+./btree.go:56:21: leaking param content: it
+./btree.go:55:6: moved to heap: pairs
+./btree.go:56:16: func literal escapes to heap
+./btree.go:57:25: &KeyValuePair{...} escapes to heap
+./btree.go:59:21: (<node DYNAMICDOTTYPE>).v escapes to heap
+./db.go:25:49: leaking param: path
+./db.go:26:9: &KeyDirValue{...} escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:82:11: done does not escape
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:62:2: moved to heap: expirable.res
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:65:36: new(<node DYNAMICTYPE>) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:66:18: make(map[go.shape.int64]*internal.Entry[go.shape.int64,go.shape.*uint8]) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:72:20: make([]expirable.bucket[go.shape.int64,go.shape.*uint8], 100) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:74:46: make(map[go.shape.int64]*internal.Entry[go.shape.int64,go.shape.*uint8]) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:82:6: func literal escapes to heap
+./db.go:59:12: leaking param: dirPath
+./db.go:59:28: opts does not escape
+./db.go:60:18: make(map[string]*Segment, 0) escapes to heap
+./db.go:61:8: &Db{...} escapes to heap
+./db.go:64:11: &BTree{...} escapes to heap
+./db.go:65:19: &btree.FreeListG[go.shape.interface { Less(github.com/google/btree.Item) bool }]{...} escapes to heap
+./db.go:65:19: make([]*btree.node[go.shape.interface { Less(github.com/google/btree.Item) bool }], 0, btree.size) escapes to heap
+./db.go:65:19: "bad degree" escapes to heap
+./db.go:65:19: &btree.BTreeG[go.shape.interface { Less(github.com/google/btree.Item) bool }]{...} escapes to heap
+./db.go:65:19: &btree.copyOnWriteContext[go.shape.interface { Less(github.com/google/btree.Item) bool }]{...} escapes to heap
+./db.go:69:9: &Options{...} escapes to heap
+./db.go:87:7: leaking param content: db
+./db.go:92:7: leaking param content: db
+./db.go:92:48: leaking param: block
+./db.go:96:7: leaking param content: db
+./db.go:100:7: leaking param: db
+./db.go:104:7: leaking param: db
+./db.go:124:7: leaking param: db to result ~r0 level=1
+./db.go:131:7: leaking param: db to result ~r0 level=1
+./db.go:138:7: leaking param: db to result ~r0 level=1
+./db.go:145:7: leaking param content: db
+./db.go:152:7: leaking param content: db
+./db.go:159:7: leaking param content: db
+./db.go:300:7: leaking param: db
+./db.go:300:44: leaking param: filePath
+./db.go:308:25: make([]*KeyValueEntry, 0) escapes to heap
+./db.go:347:7: db does not escape
+./db.go:347:46: leaking param: filePath
+./db.go:373:34: &ActiveKeyValueOffset{...} escapes to heap
+./db.go:390:7: leaking param: db
+./db.go:390:44: leaking param: filePath
+./db.go:431:7: leaking param: db
+./db.go:431:38: dirPath does not escape
+./segment.go:53:7: leaking param content: seg
+./db.go:561:7: leaking param content: db
+./db.go:489:7: leaking param content: db
+/usr/local/go/src/log/log.go:397:24: leaking param: b to result ~r0 level=0
+./db.go:491:15: ... argument does not escape
+./db.go:491:40: syscall.Signal(2) does not escape
+./db.go:491:56: syscall.Signal(9) does not escape
+./db.go:491:73: syscall.Signal(15) does not escape
+./db.go:497:15: ... argument does not escape
+./db.go:497:51: err.Error() escapes to heap
+./db.go:499:14: ... argument does not escape
+./db.go:499:14: func literal does not escape
+./db.go:505:11: leaking param content: opts
+./db.go:538:33: s does not escape
+./db.go:538:43: leaking param: file
+./db.go:538:61: e does not escape
+./db.go:515:28: ... argument does not escape
+./db.go:517:13: ... argument does not escape
+./db.go:538:28: func literal does not escape
+./db.go:543:30: ... argument does not escape
+./db.go:582:7: leaking param content: db
+./db.go:753:7: db does not escape
+./db.go:756:14: ... argument does not escape
+./db.go:756:15: "error init merge " escapes to heap
+./db.go:756:45: err.Error() escapes to heap
+./db.go:763:7: leaking param content: db
+./db.go:763:20: s does not escape
+./db.go:763:30: leaking param: file
+./db.go:763:48: leaking param: err to result ~r0 level=0
+./db.go:776:28: ... argument does not escape
+./db.go:806:32: sb escapes to heap
+./db.go:807:18: "strings: illegal use of non-zero Builder copied by value" escapes to heap
+./db.go:808:18: "strings: illegal use of non-zero Builder copied by value" escapes to heap
+./db.go:823:7: leaking param content: db
+./db.go:825:40: db.walk does not escape
+./db.go:832:43: ... argument does not escape
+./db.go:838:11: ff + ".idfile" escapes to heap
+./db.go:848:7: leaking param content: db
+./reader.go:12:7: leaking param content: db
+./reader.go:12:25: leaking param: prefix
+./reader.go:12:40: leaking param: handler
+./reader.go:13:29: leaking param content: it
+./reader.go:13:24: func literal escapes to heap
+./reader.go:15:31: string(key) does not escape
+./reader.go:25:7: leaking param: db
+./reader.go:25:30: leaking param: keyPrefix
+./reader.go:25:48: leaking param: handler
+./reader.go:26:29: leaking param content: it
+./reader.go:26:24: func literal escapes to heap
+./reader.go:28:31: string(key) does not escape
+./segment.go:8:7: db does not escape
+./segment.go:8:31: path does not escape
+./segment.go:20:7: db does not escape
+./segment.go:20:26: leaking param: path
+./segment.go:20:39: leaking param: segment
+./segment.go:24:7: db does not escape
+./segment.go:24:26: path does not escape
+./segment.go:29:7: seg does not escape
+./segment.go:33:7: seg does not escape
+./segment.go:37:7: leaking param: seg to result ~r0 level=1
+./segment.go:41:7: leaking param: seg to result ~r0 level=1
+./segment.go:45:7: seg does not escape
+./segment.go:45:29: leaking param: path
+./segment.go:49:7: seg does not escape
+./segment.go:49:31: leaking param: fp
+./segment.go:64:7: seg does not escape
+./segment.go:68:7: seg does not escape
+./segment.go:72:7: seg does not escape
+./segment.go:72:49: leaking param: block
+./segment.go:109:23: leaking param content: kdValue
+./segment.go:110:9: &Segment{...} escapes to heap
+./segment.go:111:37: map[int64]*BlockOffsetPair{...} escapes to heap
+./segment.go:112:7: &BlockOffsetPair{...} escapes to heap
+./wal.go:39:7: kv does not escape
+./wal.go:43:7: leaking param: kv to result ~r0 level=1
+./wal.go:47:7: leaking param: kv to result ~r0 level=1
+./wal.go:93:7: kv does not escape
+./wal.go:101:7: kv does not escape
+./watch.go:26:7: leaking param: db to result ~r0 level=1
+./watch.go:33:7: db does not escape
+./watch.go:85:7: db does not escape
+./watch.go:85:30: leaking param: w
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:668:19: btree.(*copyOnWriteContext[go.shape.interface { Less(github.com/google/btree.Item) bool }]).freeNode ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:669:22: btree.(*copyOnWriteContext[go.shape.interface { Less(github.com/google/btree.Item) bool }]).freeNode ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:570:13: ... argument does not escape
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:570:46: strings.Repeat("  ", btree.level) escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:570:62: btree.n.items escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:215:27: func literal does not escape
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:109:13: btree.(*FreeListG[go.shape.interface { Less(github.com/google/btree.Item) bool }]).newNode ignoring self-assignment in btree.f.freelist = btree.f.freelist[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:105:13: new(<node DYNAMICTYPE>) escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:241:13: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableFor ignoring self-assignment in btree.out.items = btree.out.items[:len(btree.n.items)]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:248:16: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).mutableFor ignoring self-assignment in btree.out.children = btree.out.children[:len(btree.n.children)]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:243:19: make(btree.items[go.shape.interface { Less(github.com/google/btree.Item) bool }], len(btree.n.items), cap(btree.n.items)) escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:250:22: make(btree.items[go.shape.*uint8], len(btree.n.children), cap(btree.n.children)) escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:442:36: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).growChildAndRemove ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:446:53: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).growChildAndRemove ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:452:41: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).growChildAndRemove ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:456:71: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).growChildAndRemove ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:464:32: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).growChildAndRemove ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:465:36: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).growChildAndRemove ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:375:22: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).remove ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:380:27: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).remove ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:387:28: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).remove ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:392:9: "invalid type" escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:269:18: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).split ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:272:22: btree.(*node[go.shape.interface { Less(github.com/google/btree.Item) bool }]).split ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:215:27: func literal does not escape
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:204:14: btree.(*items[go.shape.*uint8]).truncate ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:196:5: btree.(*items[go.shape.*uint8]).pop ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:186:5: btree.(*items[go.shape.*uint8]).removeAt ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:204:14: btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).truncate ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:196:5: btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).pop ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:186:5: btree.(*items[go.shape.interface { Less(github.com/google/btree.Item) bool }]).removeAt ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:238:16: make([]go.shape.*uint8, len(expirable.c.items)) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/expirable/expirable_lru.go:226:14: make([]go.shape.int64, 0, len(expirable.c.items)) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:124:22: &internal.Entry[go.shape.int64,go.shape.*uint8]{...} escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:92:18: &internal.Entry[go.shape.int64,go.shape.*uint8]{...} escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:58:64: new(<node DYNAMICTYPE>) escapes to heap
+../../pkg/mod/github.com/hashicorp/golang-lru/v2@v2.0.7/internal/list.go:91:6: &internal.Entry[go.shape.int64,go.shape.*uint8]{...} escapes to heap
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:202:6: btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).truncate ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:191:6: btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).pop ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:181:6: btree.(*items[*github.com/google/btree.node[github.com/google/btree.Item]]).removeAt ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:202:6: btree.(*items[github.com/google/btree.Item]).truncate ignoring self-assignment in *btree.s, btree.toClear = (*btree.s)[:btree.index], (*btree.s)[btree.index:]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:191:6: btree.(*items[github.com/google/btree.Item]).pop ignoring self-assignment in *btree.s = (*btree.s)[:btree.index]
+../../pkg/mod/github.com/google/btree@v1.1.2/btree_generic.go:181:6: btree.(*items[github.com/google/btree.Item]).removeAt ignoring self-assignment in *btree.s = (*btree.s)[:len(*btree.s) - 1]

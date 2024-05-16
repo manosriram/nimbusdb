@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -48,6 +47,12 @@ type Db struct {
 	segments   map[string]*Segment
 	lru        *expirable.LRU[int64, *Block]
 	watcher    chan WatcherEvent
+}
+
+var stringBuilderPool = sync.Pool{
+	New: func() interface{} {
+		return &strings.Builder{}
+	},
 }
 
 func NewDb(dirPath string, opts ...*Options) *Db {
@@ -190,7 +195,17 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 
 	segment, ok := db.getSegment(kdValue.path)
 	if !ok {
-		newSegment := createNewSegment(&kdValue)
+		newSegment := &Segment{
+			blocks: map[int64]*BlockOffsetPair{
+				0: {startOffset: kdValue.offset,
+					endOffset: kdValue.offset + kdValue.size,
+					filePath:  kdValue.path,
+				},
+			},
+			path:               kdValue.path,
+			currentBlockNumber: 0,
+			currentBlockOffset: 0,
+		}
 		fp, err := db.getSegmentFilePointerFromPath(kdValue.path)
 		if err != nil {
 			return nil, err
@@ -211,7 +226,6 @@ func (db *Db) setKeyDir(key []byte, kdValue KeyDirValue) (interface{}, error) {
 
 	return kdValue, nil
 }
-
 func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 	var cacheBlock = new(Block)
 
@@ -254,12 +268,8 @@ func (db *Db) getKeyDir(key []byte) (*KeyValueEntry, error) {
 		return nil, err
 	}
 
-	if v != nil {
-		tstampString, err := strconv.ParseInt(fmt.Sprint(v.tstamp), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		hasTimestampExpired := utils.HasTimestampExpired(tstampString)
+	if v.tstamp != 0 {
+		hasTimestampExpired := utils.HasTimestampExpired(v.tstamp)
 		if hasTimestampExpired {
 			db.keyDir.Delete(key)
 			return nil, ERROR_KEY_NOT_FOUND
@@ -435,13 +445,20 @@ func (db *Db) createActiveDatafile(dirPath string) error {
 		}
 		extension := path.Ext(file.Name())
 		if extension == ActiveKeyValueEntryDatafileSuffix {
-			inactiveName := fmt.Sprintf("%s.idfile", strings.Split(file.Name(), ".")[0])
+			inactiveName := stringBuilderPool.Get().(*strings.Builder)
+			defer stringBuilderPool.Put(inactiveName)
+
+			inactiveName.Reset()
+			inactiveName.Write([]byte(strings.Split(file.Name(), ".")[0]))
+			inactiveName.Write([]byte(".idfile"))
+
+			// inactiveName := fmt.Sprintf("%s.idfile", strings.Split(file.Name(), ".")[0])
 
 			oldPath := filepath.Join(dirPath, file.Name())
-			newPath := filepath.Join(dirPath, inactiveName)
+			newPath := filepath.Join(dirPath, inactiveName.String())
 			os.Rename(oldPath, newPath)
 
-			fp, err := db.getSegmentFilePointerFromPath(inactiveName)
+			fp, err := db.getSegmentFilePointerFromPath(inactiveName.String())
 			if err != nil {
 				return err
 			}
@@ -449,8 +466,8 @@ func (db *Db) createActiveDatafile(dirPath string) error {
 			if !ok {
 				return ERROR_CANNOT_READ_FILE
 			}
-			db.setSegment(inactiveName, segment)
-			segment.setPath(inactiveName)
+			db.setSegment(inactiveName.String(), segment)
+			segment.setPath(inactiveName.String())
 			segment.setWriter(fp)
 		}
 	}
@@ -780,7 +797,12 @@ func (db *Db) walk(s string, file fs.DirEntry, err error) error {
 		if (z.Endoffset-z.Startoffset)+info.Size() > DatafileThreshold {
 			db.closeActiveMergeDataFilePointer()
 			swapFilename := strings.Split(newPath, ".")[0]
-			err = os.Rename(newPath, fmt.Sprintf("%s.idfile", swapFilename))
+			sb := stringBuilderPool.Get().(strings.Builder)
+			defer stringBuilderPool.Put(sb)
+			sb.WriteString(swapFilename)
+			sb.WriteString(".idfile")
+
+			err = os.Rename(newPath, sb.String())
 			if err != nil {
 				return err
 			}
@@ -808,7 +830,8 @@ func (db *Db) merge() error {
 	}
 	for _, file := range files {
 		ff := strings.Split(file, ".")[0]
-		err := os.Rename(file, fmt.Sprintf("%s.idfile", ff))
+		x := ff + ".idfile"
+		err := os.Rename(file, x)
 		if err != nil {
 			return err
 		}

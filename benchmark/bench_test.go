@@ -49,20 +49,14 @@ func set(b *testing.B) {
 
 func get(b *testing.B) {
 	for i := 0; i < 10000; i++ {
-		key := []byte(utils.GetTestKey(i))
-		value := []byte("testvalue")
-		_, err := db.Set(key, value)
+		_, err := db.Set([]byte(utils.GetTestKey(i)), []byte("testvalue"))
 		assert.Nil(b, err)
 	}
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		kv := &nimbusdb.KeyValuePair{
-			Key:   []byte(utils.GetTestKey(rand.Int())),
-			Value: []byte("testvalue"),
-		}
-		_, err := db.Get(kv.Key)
+		_, err := db.Get([]byte(utils.GetTestKey(rand.Int())))
 		if err != nil && err != nimbusdb.ERROR_KEY_NOT_FOUND {
 			log.Fatal(err)
 		}

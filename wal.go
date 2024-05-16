@@ -2,6 +2,7 @@ package nimbusdb
 
 import (
 	"hash/crc32"
+	"sync"
 	"time"
 
 	"github.com/manosriram/nimbusdb/utils"
@@ -47,10 +48,17 @@ func (kv *KeyValueEntry) Value() []byte {
 	return kv.value
 }
 
+var bytePool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 1024)
+	},
+}
+
 func (kv *KeyValueEntry) PayloadToByte() []byte {
 	keyValueEntryInBytes := make([]byte, 0, kv.StaticChunkSize())
 
-	buf := make([]byte, 0)
+	buf := bytePool.Get().([]byte)
+	buf = buf[:0]
 	buf = append(buf, utils.Int64ToByte(kv.tstamp)...)
 	buf = append(buf, utils.Int64ToByte(kv.keySize)...)
 	buf = append(buf, utils.Int64ToByte(kv.valueSize)...)
@@ -59,13 +67,15 @@ func (kv *KeyValueEntry) PayloadToByte() []byte {
 	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.key...)
 	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.value...)
 
+	bytePool.Put(buf)
 	return keyValueEntryInBytes
 }
 
 func (kv *KeyValueEntry) ToByte() []byte {
 	keyValueEntryInBytes := make([]byte, 0, kv.StaticChunkSize())
 
-	buf := make([]byte, 0)
+	buf := bytePool.Get().([]byte)
+	buf = buf[:0]
 	buf = append(buf, utils.UInt32ToByte(kv.crc)...)
 	buf = append(buf, kv.deleted)
 	buf = append(buf, utils.Int64ToByte(kv.tstamp)...)
@@ -76,6 +86,7 @@ func (kv *KeyValueEntry) ToByte() []byte {
 	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.key...)
 	keyValueEntryInBytes = append(keyValueEntryInBytes, kv.value...)
 
+	bytePool.Put(buf)
 	return keyValueEntryInBytes
 }
 
