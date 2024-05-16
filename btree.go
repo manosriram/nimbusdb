@@ -18,12 +18,22 @@ type item struct {
 	v   KeyDirValue
 }
 
+var itemPool = sync.Pool{
+	New: func() interface{} {
+		return &item{}
+	},
+}
+
 func (it item) Less(i btree.Item) bool {
 	return bytes.Compare(it.key, i.(*item).key) < 0
 }
 
 func (b *BTree) Get(key []byte) *KeyDirValue {
-	i := b.tree.Get(&item{key: key})
+	it := itemPool.Get().(*item)
+	it.key = key
+	defer itemPool.Put(it)
+
+	i := b.tree.Get(it)
 	if i == nil {
 		return nil
 	}
@@ -40,6 +50,10 @@ func (b *BTree) Set(key []byte, value KeyDirValue) *KeyDirValue {
 }
 
 func (b *BTree) Delete(key []byte) *KeyValuePair {
+	it := itemPool.Get().(*item)
+	it.key = key
+	defer itemPool.Put(it)
+
 	i := b.tree.Delete(&item{key: key})
 	if i != nil {
 		x := i.(*item)
