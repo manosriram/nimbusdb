@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	flock "github.com/gofrs/flock"
 	"github.com/segmentio/ksuid"
 )
 
@@ -28,6 +29,7 @@ const (
 	TempDataFilePattern                 = "*.dfile"
 	TempInactiveDataFilePattern         = "*.idfile"
 	DefaultDataDir                      = "nimbusdb"
+	FlockSuffix                         = "flock"
 
 	DatafileThreshold = 1 * MB
 	BlockSize         = 32 * KB
@@ -67,6 +69,7 @@ var (
 	ERROR_DATA_FILE_WRITER_NOT_CLOSED = errors.New("data file writer is not closed")
 	ERROR_DATA_FILE_READER_NOT_OPEN   = errors.New("data file reader is not open")
 	ERROR_DATA_FILE_WRITER_NOT_OPEN   = errors.New("data file writer is not open")
+	ERROR_DIRPATH_ALREADY_IN_USE      = errors.New("dirpath already in use")
 )
 
 var (
@@ -95,6 +98,7 @@ type Options struct {
 	Path           string
 	ShouldWatch    bool
 	WatchQueueSize int
+	Flock          *flock.Flock
 }
 
 type KeyValuePair struct {

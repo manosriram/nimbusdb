@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/google/btree"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	utils "github.com/manosriram/nimbusdb/utils"
@@ -67,6 +68,7 @@ func NewDb(dirPath string, opts ...*Options) *Db {
 		segments: segments,
 		opts: &Options{
 			ShouldWatch: false,
+			Flock:       opts[0].Flock,
 		},
 	}
 
@@ -482,6 +484,7 @@ func (db *Db) createActiveDatafile(dirPath string) error {
 }
 
 func (db *Db) handleInterrupt() {
+	defer db.opts.Flock.Close()
 	terminateSignal := make(chan os.Signal, 1)
 	signal.Notify(terminateSignal, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 	for {
@@ -509,10 +512,27 @@ func Open(opts *Options) (*Db, error) {
 
 		dirPath = utils.JoinPaths(home, DefaultDataDir)
 	}
+
+	var builder strings.Builder
+	_, err := fmt.Fprintf(&builder, "%s.%s", dirPath, FlockSuffix)
+	if err != nil {
+		return nil, err
+	}
+
+	flock := flock.New(builder.String())
+	tryLock, err := flock.TryLock()
+	if err != nil {
+		return nil, err
+	}
+	if !tryLock {
+		return nil, ERROR_DIRPATH_ALREADY_IN_USE
+	}
+	opts.Flock = flock
+
 	db := NewDb(dirPath, opts)
 	go db.handleInterrupt()
 
-	err := os.MkdirAll(dirPath, os.ModePerm)
+	err = os.MkdirAll(dirPath, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -554,6 +574,7 @@ func Open(opts *Options) (*Db, error) {
 // Closes the database. Closes the file pointer used to read/write the activeDataFile.
 // Closes all file inactiveDataFile pointers and marks them as closed.
 func (db *Db) Close() error {
+	defer db.opts.Flock.Unlock()
 	err := db.closeActiveDataFileReader()
 	if err != nil {
 		return err

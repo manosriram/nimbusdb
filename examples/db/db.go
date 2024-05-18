@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	// DirPath = "/Users/manosriram/nimbusdb/test_data"
-	DirPath = "./dd/"
+	DirPath = "/Users/manosriram/nimbusdb/test_data"
 )
 
 func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
@@ -32,7 +31,10 @@ func watchKeyChange(ch chan nimbusdb.WatcherEvent) {
 }
 
 func main() {
-	d, _ := nimbusdb.Open(&nimbusdb.Options{Path: DirPath, WatchQueueSize: 10})
+	d, err := nimbusdb.Open(&nimbusdb.Options{Path: DirPath, WatchQueueSize: 10})
+	if err != nil {
+		log.Fatalf("error opening dirpath: %s\n", err.Error())
+	}
 	defer d.Close()
 
 	ch, _ := d.NewWatch()
