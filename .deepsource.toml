@@ -3,3 +3,9 @@ version = 1
 [[analyzers]]
 name = "go"
 enabled = true
+
+[analyzers.meta]
+import_root = "github.com/deepsourcelabs/web-app"
+dependencies_vendored = false
+build_tags = ["darwin"]
+cgo_enabled = false
