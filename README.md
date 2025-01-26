@@ -77,7 +77,7 @@ if err != nil {
 }
 ```
 
-#### Set with expiry
+#### Set with ttl
 ```go
 key, err := d.SetWithTTL([]byte("key"), []byte("value"), time.Second * 10)
 if err != nil {
